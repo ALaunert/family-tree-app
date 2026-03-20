@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data
+data/
+uploads/
+exports/
+volumes/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# AI scratch and local companion artifacts
+ai/tmp/
+.superpowers/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
