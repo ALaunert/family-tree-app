@@ -1,1 +1,4 @@
 .worktrees/
+.env
+.DS_Store
+postgres-data/
