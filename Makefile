@@ -24,7 +24,7 @@ create-user:
 	docker compose exec api echo "TODO: create an application user"
 
 test-api:
-	docker compose exec api echo "TODO: run API tests"
+	docker compose run --rm api pytest -q
 
 test-web:
 	docker compose exec web echo "TODO: run web tests"
