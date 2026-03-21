@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .PHONY: setup up down logs migrate seed-owner create-user test-api test-web test-e2e test smoke
 
 setup:
-	cp -n .env.example .env || true
+	if [ ! -f .env ]; then cp .env.example .env; fi
 
 up:
 	docker compose up -d db api web

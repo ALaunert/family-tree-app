@@ -1,6 +1,10 @@
 services:
   db:
     image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-family_tree}
+      POSTGRES_USER: ${POSTGRES_USER:-family_tree}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_tree}
 
   api:
     build:
