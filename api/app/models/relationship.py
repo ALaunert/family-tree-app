@@ -24,6 +24,10 @@ class Relationship(Base):
     __tablename__ = "relationships"
     __table_args__ = (
         CheckConstraint(
+            "relationship_type IN ('parent_child', 'partner')",
+            name="ck_relationship_type_valid",
+        ),
+        CheckConstraint(
             "source_person_id <> target_person_id",
             name="ck_relationship_not_self",
         ),
@@ -52,6 +56,12 @@ class Relationship(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     source_person: Mapped["Person"] = relationship(foreign_keys=[source_person_id])

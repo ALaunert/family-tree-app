@@ -120,16 +120,26 @@ Completed work:
 - Added Alembic configuration and the initial schema migration.
 - Added Postgres healthcheck and persistent `postgres-data` compose volume.
 - Replaced the placeholder `make migrate` target with `docker compose run --rm api alembic upgrade head`.
+- Review follow-up corrected the user schema to require `password_hash` and removed the unplanned required `display_name`.
+- Review follow-up added database check constraints for `users.role` and `relationships.relationship_type`.
+- Review follow-up made timestamps consistent with `created_at` and `updated_at` on `users`, `auth_sessions`, `people`, and `relationships`.
+- Review follow-up added database constraint coverage for duplicate relationship pairs.
+- Review follow-up added `20260321_0002_review_schema_constraints.py` so existing local DBs at `20260321_0001` can be reconciled without deleting the normal compose volume.
 
 Current TDD status:
 
-- Red test has been written.
-- Red verification complete:
+- Original red verification complete:
   - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - Result: expected failure, exit 2 during test collection because `sqlalchemy` is not installed yet.
-- Green verification complete:
+- Original green verification complete:
   - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - Result: 2 passed.
+- Review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: expected failure, 5 failed and 2 passed. Failures covered missing `password_hash`, missing relationship type check constraint, missing `updated_at`, and stale user shape.
+- Review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: 7 passed.
 
 Verification:
 
@@ -145,11 +155,26 @@ Verification:
   - pass; Alembic no-op after the initial migration had already been applied.
 - `docker compose run --rm api pytest -q`
   - pass; 3 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api alembic upgrade head`
+  - pass; applied `20260321_0002`.
+- Review follow-up `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - pass; 7 passed.
+- Review follow-up `docker compose build api`
+  - pass.
+- Review follow-up `docker compose run --rm api pytest -q`
+  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up fresh migration verification:
+  - `docker compose -p family-tree-task3-verify up -d db`
+  - `docker compose -p family-tree-task3-verify run --rm api alembic upgrade head`
+  - `docker compose -p family-tree-task3-verify exec db psql ...`
+  - Result: both revisions applied from scratch; confirmed all four app tables, required `password_hash`, no `display_name`, non-null timestamps, role/type check constraints, and relationship/user unique constraints.
+  - Cleanup: `docker compose -p family-tree-task3-verify down -v --remove-orphans` removed only the temporary project resources.
 
 Note:
 
 - Necessary plan deviation: added `alembic`, `SQLAlchemy>=2.0`, and `psycopg[binary]` to `api/pyproject.toml`, which was not listed in the Task 3 file list but was required for the database layer and migrations.
 - Environment note: after some successful Docker runs, sandboxed Docker access began returning permission errors for `/Users/launert/.docker/run/docker.sock`. Docker worked with escalated access, so final Docker-based verification was completed that way without repo code changes.
+- Review follow-up migration approach: kept the original revision history and added a second idempotent reconciliation revision. The initial revision now also reflects the corrected schema, so fresh databases get the reviewed shape immediately; the second revision no-ops when it is already true.
 
 ### Tasks 4-10
 
@@ -179,20 +204,25 @@ At that point, the exact Task 2 health test passed in-container.
 
 ### Verified in the current session
 
-- `docker compose build api`
-  - pass
-- `docker compose up -d db`
-  - pass
 - `docker compose run --rm api alembic upgrade head`
-  - pass
+  - pass; applied review follow-up migration `20260321_0002`.
 - `docker compose exec db psql -U family_tree -d family_tree -c '\dt'`
   - pass; confirmed `users`, `auth_sessions`, `people`, and `relationships` tables exist.
-- `make migrate`
-  - pass
 - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
-  - pass; 2 passed.
+  - pass; 7 passed.
+- `docker compose build api`
+  - pass.
 - `docker compose run --rm api pytest -q`
-  - pass; 3 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose -p family-tree-task3-verify run --rm api alembic upgrade head`
+  - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
+- Isolated fresh DB catalog checks:
+  - pass; confirmed `users`, `auth_sessions`, `people`, and `relationships`.
+  - pass; confirmed `users.password_hash` is non-null and `users.display_name` is absent.
+  - pass; confirmed `created_at` and `updated_at` are non-null on all four app tables.
+  - pass; confirmed `ck_users_role_valid`, `ck_relationship_type_valid`, `ck_relationship_not_self`, `uq_relationship_pair`, and `uq_users_email`.
+- `docker compose -p family-tree-task3-verify down -v --remove-orphans`
+  - pass; removed only the temporary project resources.
 
 ## Environment Notes
 
@@ -237,7 +267,8 @@ Present in the branch now:
 
 Diff against the pre-implementation branch point:
 
-- database files from Task 3 are pending commit in the current working tree
+- Task 3 database schema was committed in `cf79957`.
+- Review follow-up fixes are recorded in a separate follow-up commit after `cf79957`.
 
 ## Recommended Next Step
 

@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, Enum, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -23,16 +23,28 @@ user_role_type = Enum(
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('owner', 'moderator', 'viewer')",
+            name="ck_users_role_valid",
+        ),
+        UniqueConstraint("email", name="uq_users_email"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), nullable=False)
-    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(user_role_type, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     auth_sessions: Mapped[list["AuthSession"]] = relationship(
