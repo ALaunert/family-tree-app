@@ -15,7 +15,7 @@ logs:
 	docker compose logs -f
 
 migrate:
-	docker compose exec api echo "TODO: run API migrations"
+	docker compose run --rm api alembic upgrade head
 
 seed-owner:
 	docker compose exec api echo "TODO: seed owner user"
