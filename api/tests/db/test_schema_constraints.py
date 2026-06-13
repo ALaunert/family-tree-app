@@ -12,6 +12,9 @@ from app.models.user import User, UserRole
 @pytest.fixture
 def db_session():
     with SessionLocal() as session:
+        database_name = session.execute(text("SELECT current_database()")).scalar_one()
+        assert database_name.endswith("_test")
+
         for model in (Relationship, AuthSession, Person, User):
             session.execute(delete(model))
         session.commit()
@@ -44,6 +47,12 @@ def test_users_email_is_unique(db_session):
 
     with pytest.raises(IntegrityError):
         db_session.commit()
+
+
+def test_db_session_uses_dedicated_test_database(db_session):
+    database_name = db_session.execute(text("SELECT current_database()")).scalar_one()
+
+    assert database_name.endswith("_test")
 
 
 def test_users_require_password_hash_and_do_not_require_display_name(db_session):

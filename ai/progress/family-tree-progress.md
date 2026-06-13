@@ -125,6 +125,10 @@ Completed work:
 - Review follow-up made timestamps consistent with `created_at` and `updated_at` on `users`, `auth_sessions`, `people`, and `relationships`.
 - Review follow-up added database constraint coverage for duplicate relationship pairs.
 - Review follow-up added `20260321_0002_review_schema_constraints.py` so existing local DBs at `20260321_0001` can be reconciled without deleting the normal compose volume.
+- Re-review follow-up made API tests use a dedicated `_test` database derived from `DATABASE_URL` before app DB settings import.
+- Re-review follow-up added a guard to the destructive schema-test cleanup fixture so it refuses to delete rows unless the active database name ends with `_test`.
+- Re-review follow-up made the `20260321_0002` downgrade a documented no-op so downgrading to the checked-in `20260321_0001` schema does not remove clean-schema columns or constraints.
+- Re-review follow-up added Alembic `path_separator = os` to avoid the config deprecation warning surfaced by running migrations from tests.
 
 Current TDD status:
 
@@ -140,6 +144,16 @@ Current TDD status:
 - Review follow-up green verification complete:
   - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - Result: 7 passed.
+- Re-review red verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: expected failure, 1 failed and 7 passed. Failure showed active database was `family_tree`, not a `_test` database.
+- Re-review downgrade reproduction complete:
+  - `docker compose -p family-tree-downgrade-red run --rm api alembic upgrade head`
+  - `docker compose -p family-tree-downgrade-red run --rm api alembic downgrade 20260321_0001`
+  - Result: unsafe old downgrade removed `password_hash` and `updated_at`, re-added `display_name`, and removed enum check constraints.
+- Re-review green verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: 8 passed.
 
 Verification:
 
@@ -169,12 +183,26 @@ Verification:
   - `docker compose -p family-tree-task3-verify exec db psql ...`
   - Result: both revisions applied from scratch; confirmed all four app tables, required `password_hash`, no `display_name`, non-null timestamps, role/type check constraints, and relationship/user unique constraints.
   - Cleanup: `docker compose -p family-tree-task3-verify down -v --remove-orphans` removed only the temporary project resources.
+- Re-review `docker compose build api`
+  - pass.
+- Re-review `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - pass; 8 passed.
+- Re-review `docker compose run --rm api pytest -q`
+  - pass; 9 passed, 1 existing Starlette/httpx deprecation warning.
+- Re-review isolated downgrade verification:
+  - `docker compose -p family-tree-downgrade-final up -d db`
+  - `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
+  - `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`
+  - Result: after downgrade, clean schema remained intact: app tables exist, `password_hash` remains, `display_name` remains absent, timestamps remain on all four app tables, and role/type/relationship/user constraints remain.
+  - Cleanup: `docker compose -p family-tree-downgrade-final down -v --remove-orphans` removed only the temporary project resources.
 
 Note:
 
 - Necessary plan deviation: added `alembic`, `SQLAlchemy>=2.0`, and `psycopg[binary]` to `api/pyproject.toml`, which was not listed in the Task 3 file list but was required for the database layer and migrations.
 - Environment note: after some successful Docker runs, sandboxed Docker access began returning permission errors for `/Users/launert/.docker/run/docker.sock`. Docker worked with escalated access, so final Docker-based verification was completed that way without repo code changes.
 - Review follow-up migration approach: kept the original revision history and added a second idempotent reconciliation revision. The initial revision now also reflects the corrected schema, so fresh databases get the reviewed shape immediately; the second revision no-ops when it is already true.
+- Re-review migration downgrade decision: `20260321_0002` downgrade is intentionally a no-op because checked-in `20260321_0001` already defines the clean schema. Reversing `0002` should only move Alembic's version marker, not mutate the database back to the pre-review shape.
+- Re-review test database decision: pytest derives the test database name by appending `_test` to the configured database name and creates/migrates it automatically through the Postgres admin database. This keeps test cleanup away from non-test data while preserving the normal compose database.
 
 ### Tasks 4-10
 
@@ -204,24 +232,22 @@ At that point, the exact Task 2 health test passed in-container.
 
 ### Verified in the current session
 
-- `docker compose run --rm api alembic upgrade head`
-  - pass; applied review follow-up migration `20260321_0002`.
-- `docker compose exec db psql -U family_tree -d family_tree -c '\dt'`
-  - pass; confirmed `users`, `auth_sessions`, `people`, and `relationships` tables exist.
-- `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
-  - pass; 7 passed.
 - `docker compose build api`
   - pass.
+- `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - pass; 8 passed.
 - `docker compose run --rm api pytest -q`
-  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
-- `docker compose -p family-tree-task3-verify run --rm api alembic upgrade head`
+  - pass; 9 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
   - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
-- Isolated fresh DB catalog checks:
+- `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`
+  - pass; no-op downgrade preserved the clean schema.
+- Isolated downgrade DB catalog checks:
   - pass; confirmed `users`, `auth_sessions`, `people`, and `relationships`.
   - pass; confirmed `users.password_hash` is non-null and `users.display_name` is absent.
   - pass; confirmed `created_at` and `updated_at` are non-null on all four app tables.
   - pass; confirmed `ck_users_role_valid`, `ck_relationship_type_valid`, `ck_relationship_not_self`, `uq_relationship_pair`, and `uq_users_email`.
-- `docker compose -p family-tree-task3-verify down -v --remove-orphans`
+- `docker compose -p family-tree-downgrade-final down -v --remove-orphans`
   - pass; removed only the temporary project resources.
 
 ## Environment Notes

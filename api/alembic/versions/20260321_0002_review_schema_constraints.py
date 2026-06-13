@@ -77,34 +77,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    relationship_checks = _check_constraint_names("relationships")
-    if "ck_relationship_type_valid" in relationship_checks:
-        op.drop_constraint(
-            "ck_relationship_type_valid",
-            "relationships",
-            type_="check",
-        )
-
-    user_checks = _check_constraint_names("users")
-    if "ck_users_role_valid" in user_checks:
-        op.drop_constraint("ck_users_role_valid", "users", type_="check")
-
-    for table_name in ("relationships", "auth_sessions", "users"):
-        if "updated_at" in _column_names(table_name):
-            op.drop_column(table_name, "updated_at")
-
-    user_columns = _column_names("users")
-    if "display_name" not in user_columns:
-        op.add_column(
-            "users",
-            sa.Column(
-                "display_name",
-                sa.String(length=200),
-                server_default="",
-                nullable=False,
-            ),
-        )
-        op.alter_column("users", "display_name", server_default=None)
-
-    if "password_hash" in user_columns:
-        op.drop_column("users", "password_hash")
+    # This revision reconciles databases created before the checked-in
+    # 20260321_0001 schema was corrected. The current 0001 already contains
+    # the clean schema, so downgrading from 0002 must not remove those columns
+    # or constraints.
+    pass
