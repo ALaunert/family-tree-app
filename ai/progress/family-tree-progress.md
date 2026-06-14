@@ -8,13 +8,14 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 4.
+Implementation is through Task 5.
 
 - Task 1 is complete.
 - Task 2 is complete.
 - Task 3 is complete.
 - Task 4 is complete.
-- Tasks 5-10 are still pending.
+- Task 5 is complete.
+- Tasks 6-10 are still pending.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -311,13 +312,60 @@ Execution-time adjustments against the literal Task 4 file list:
 - Updated the API test client to use an HTTPS base URL so secure cookies are sent during authenticated route tests.
 - Avoid running DB-mutating API pytest commands in parallel unless they use isolated database names.
 
-### Tasks 5-10
+### Task 5: Implement People CRUD and Role Checks
+
+Status: complete
+
+Planned scope:
+
+- Person create/update/read schemas with camelCase JSON aliases.
+- Person service layer for list, get, create, and update.
+- People API routes for:
+  - `GET /api/v1/people`
+  - `GET /api/v1/people/{person_id}`
+  - `POST /api/v1/people`
+  - `PATCH /api/v1/people/{person_id}`
+- Role checks so viewers can read, while moderators and owners can write.
+- People API tests written before implementation.
+
+Completed work:
+
+- Added failing-first people API tests in `api/tests/people/test_people_api.py`.
+- Added authenticated viewer, moderator, and owner test clients that log in through the real auth endpoint.
+- Added `api/app/schemas/person.py` with Pydantic aliases for `fullName`, `birthDate`, and `deathDate`, plus blank-name validation.
+- Added `api/app/services/person_service.py` for SQLAlchemy-backed people operations.
+- Added `api/app/api/routes/people.py` with authenticated read routes and moderator/owner write checks.
+- Included the people router from `api/app/api/router.py`.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: expected failure, 7 failed. All failures were `404 Not Found` because people routes were not implemented yet.
+- Green verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: 7 passed, 1 existing Starlette/httpx deprecation warning.
+
+Verification:
+
+- `docker compose build api`
+  - pass.
+- `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - pass; 7 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest -q`
+  - pass; 21 passed, 1 existing Starlette/httpx deprecation warning.
+
+Execution-time adjustments against the literal Task 5 file list:
+
+- Added a viewer get-person test to cover `GET /api/v1/people/{person_id}` from the planned route list.
+- Added an owner create test to verify owners share moderator write permissions.
+
+### Tasks 6-10
 
 Status: not started
 
 Remaining planned work:
 
-- Task 5: people CRUD and role checks
 - Task 6: relationship rules and tree payload
 - Task 7: Vue frontend and auth flow
 - Task 8: tree viewer and person details panel
@@ -340,10 +388,12 @@ At that point, the exact Task 2 health test passed in-container.
 
 - `docker compose build api`
   - pass.
+- `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - pass; 7 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - pass; 8 passed.
 - `docker compose run --rm api pytest -q`
-  - pass; 9 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 21 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
   - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`
@@ -405,13 +455,13 @@ Diff against the pre-implementation branch point:
 
 ## Recommended Next Step
 
-Begin Task 5: people CRUD and role checks.
+Begin Task 6: relationship rules and tree payload.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 5: Implement People CRUD and Role Checks
+- Task 6: relationship rules and tree payload
 
 If resuming in the same environment, first check Docker availability:
 
