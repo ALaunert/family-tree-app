@@ -8,7 +8,7 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 7.
+Implementation is through Task 8.
 
 - Task 1 is complete.
 - Task 2 is complete.
@@ -17,7 +17,8 @@ Implementation is through Task 7.
 - Task 5 is complete.
 - Task 6 is complete.
 - Task 7 is complete.
-- Tasks 8-10 are still pending.
+- Task 8 is complete.
+- Tasks 9-10 are still pending.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -522,13 +523,85 @@ Execution-time adjustments against the literal Task 7 file list:
 - Initial frontend toolchain versions reported 6 dependency audit vulnerabilities through the Vite/esbuild chain. Targeted updates to current Vite, Vitest, Vue plugin, and `vue-tsc` resolved the audit before commit.
 - Compose now bind-mounts only frontend source/config files into the web container; package changes require rebuilding the web image so `node_modules` stays aligned with the committed lockfile.
 
-### Tasks 8-10
+### Task 8: Tree Viewer and Person Details Panel
+
+Status: complete
+
+Planned scope:
+
+- Frontend tree DTO types and API client.
+- Family graph construction with synthetic `family-unit` nodes.
+- Dagre layout for Vue Flow nodes.
+- Tree page that loads `/api/v1/tree`.
+- Vue Flow canvas with person nodes, controls, and background.
+- Person details panel with dates, notes, partners, parents, and children.
+- Route `/tree` using the real tree page.
+
+Completed work:
+
+- Added tree DTO and graph types in `web/src/features/tree/types.ts`.
+- Added `fetchTree()` for `/api/v1/tree`.
+- Added `buildFamilyGraph()` to create person nodes, synthetic family-unit nodes, parent-to-family edges, and family-to-child edges.
+- Added `applyDagreLayout()` for top-to-bottom graph positioning.
+- Added `FamilyTreeCanvas.vue` using `@vue-flow/core`, `@vue-flow/background`, `@vue-flow/controls`, and custom person/family-unit node rendering.
+- Added `PersonNode.vue` with selectable person cards and life-date display.
+- Replaced the placeholder tree page with a loading/error/tree workspace that opens person details on selection.
+- Added `PersonDetailsPanel.vue` with full name, birth/death dates, notes, partner context, parent context, and child context.
+- Updated the router so `/tree` uses the real tree page.
+- Added Vue Flow and Dagre dependencies plus lockfile updates.
+- Added jsdom dimension shims and Vue Flow stylesheet imports for frontend test stability.
+- Spec-review follow-up fixed multiple non-partner parents so each unpaired parent gets a single-parent family-unit link to the child.
+- Code-review follow-up added graph assertions for parent-to-family edges and a focused details-panel test for partner, parent, and child context.
+
+Current TDD status:
+
+- Red verification was performed by the Task 8 implementer subagent:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - Result: expected failure because the tree graph builder and tree page did not exist yet.
+- Green verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - Result: 2 passed.
+- Spec-review follow-up red verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts`
+  - Result: expected failure, 1 failed and 1 passed. The failing case showed that only the first non-partner parent received a single-parent family-unit link.
+- Spec-review follow-up green verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts`
+  - Result: 2 passed.
+- Debugging follow-up:
+  - `docker compose run --rm web npm run typecheck`
+  - Result: initially failed on Vue Flow `Node` generic order and `CustomEvent` type-shape usage in `web/src/features/tree/types.ts`.
+  - Root cause: Vue Flow's `Node` generic order is `Node<Data, CustomEvents, Type>`, and its `CustomEvent` is a callback signature rather than the browser `CustomEvent`.
+  - Fix: the family graph node alias now supplies the node type as the third generic and uses a callback-shaped custom-event map.
+- Code-review follow-up verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/person/PersonDetailsPanel.test.ts`
+  - Result: 3 passed.
+
+Verification:
+
+- `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - pass; 3 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 7 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+
+Execution-time adjustments against the literal Task 8 file list:
+
+- Added `web/package-lock.json` changes because new frontend dependencies must remain reproducible.
+- Modified `web/src/styles/index.css` to load Vue Flow styles globally.
+- Modified `web/src/test/setup.ts` to provide jsdom element dimensions used by graph-related tests.
+- The `TreePage` unit test stubs `FamilyTreeCanvas` so it verifies the page-level selection/details behavior without coupling that test to Vue Flow's jsdom layout internals. The production canvas component still renders `<VueFlow />`, `<Controls />`, and `<Background />`.
+
+### Tasks 9-10
 
 Status: not started
 
 Remaining planned work:
 
-- Task 8: tree viewer and person details panel
 - Task 9: moderator editing and quick-jump search
 - Task 10: end-to-end journeys, smoke coverage, and final docs
 
@@ -567,6 +640,16 @@ At that point, the exact Task 2 health test passed in-container.
   - pass; confirmed `ck_users_role_valid`, `ck_relationship_type_valid`, `ck_relationship_not_self`, `uq_relationship_pair`, and `uq_users_email`.
 - `docker compose -p family-tree-downgrade-final down -v --remove-orphans`
   - pass; removed only the temporary project resources.
+- `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - pass; 3 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 7 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
 
 ## Environment Notes
 
@@ -609,6 +692,7 @@ Present in the branch now:
 - session auth, owner bootstrap, invited-user CLI, and auth tests from Task 4
 - people API, relationship rules, and tree payload APIs from Tasks 5-6
 - Vue/Vite frontend shell, auth flow, route guard, and web test tooling from Task 7
+- tree viewer, Vue Flow/Dagre layout, person details panel, and tree selection tests from Task 8
 
 Diff against the pre-implementation branch point:
 
@@ -620,13 +704,13 @@ Diff against the pre-implementation branch point:
 
 ## Recommended Next Step
 
-Begin Task 8: tree viewer and person details panel.
+Begin Task 9: moderator editing and quick-jump search.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 8: tree viewer and person details panel
+- Task 9: moderator editing and quick-jump search
 
 If resuming in the same environment, first check Docker availability:
 
