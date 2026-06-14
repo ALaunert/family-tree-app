@@ -356,23 +356,24 @@ Present in the branch now:
 - root bootstrap files from Task 1
 - backend skeleton files from Task 2
 - database layer, initial models, Alembic migration plumbing, and schema tests from Task 3
-- no auth layer yet
+- session auth, owner bootstrap, invited-user CLI, and auth tests from Task 4
 - no frontend app files yet beyond `web/Dockerfile`
 
 Diff against the pre-implementation branch point:
 
 - Task 3 database schema was committed in `cf79957`.
 - Review follow-up fixes are recorded in a separate follow-up commit after `cf79957`.
+- Task 4 session auth was committed in `3d80324`.
 
 ## Recommended Next Step
 
-Begin Task 4: session auth and owner bootstrapping.
+Begin Task 5: people CRUD and role checks.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 4: Add Session Auth and Owner Bootstrapping
+- Task 5: Implement People CRUD and Role Checks
 
 If resuming in the same environment, first check Docker availability:
 
