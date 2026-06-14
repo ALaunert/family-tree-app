@@ -1,6 +1,6 @@
 # Family Tree App Progress
 
-Date: 2026-06-13
+Date: 2026-06-14
 Branch: `codex/family-tree-implementation`
 Worktree: `/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation`
 Primary plan: [2026-03-21-family-tree-app-implementation-plan.md](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/ai/plans/2026-03-21-family-tree-app-implementation-plan.md)
@@ -8,14 +8,15 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 5.
+Implementation is through Task 6.
 
 - Task 1 is complete.
 - Task 2 is complete.
 - Task 3 is complete.
 - Task 4 is complete.
 - Task 5 is complete.
-- Tasks 6-10 are still pending.
+- Task 6 is complete.
+- Tasks 7-10 are still pending.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -374,13 +375,61 @@ Execution-time adjustments against the literal Task 5 file list:
 - Added unauthenticated list, viewer update denial, and owner update tests during review follow-up.
 - Added a `fullName` API max length matching the database column and rejected explicit null `fullName` updates.
 
-### Tasks 6-10
+### Task 6: Relationship Rules and Tree Payload
+
+Status: complete
+
+Planned scope:
+
+- Relationship create/read schemas with camelCase JSON aliases.
+- Tree response schema with `viewerRole`, `people`, and `relationships`.
+- Relationship service rules for canonical partner pairs, duplicate rejection, two-parent limit, and ancestry-cycle rejection.
+- Tree service that returns the authenticated viewer role plus all people and relationships.
+- Relationship routes for:
+  - `POST /api/v1/relationships`
+  - `DELETE /api/v1/relationships/{relationship_id}`
+- Tree route for:
+  - `GET /api/v1/tree`
+- Role checks so viewers can read the tree, while moderators and owners can write relationships.
+- Relationship and tree API tests written before implementation.
+
+Completed work:
+
+- Added failing-first relationship rule tests in `api/tests/relationships/test_relationship_rules.py`.
+- Added failing-first tree payload tests in `api/tests/tree/test_tree_api.py`.
+- Added `api/app/schemas/relationship.py` and `api/app/schemas/tree.py`.
+- Added `api/app/services/relationship_service.py` with partner canonicalization, duplicate checks, max-two-parent enforcement, and DFS cycle detection before parent-child insert.
+- Added `api/app/services/tree_service.py` to assemble the tree payload.
+- Added `api/app/api/routes/relationships.py` and `api/app/api/routes/tree.py`.
+- Included the relationship and tree routers from `api/app/api/router.py`.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: expected failure, 8 failed. All failures were `404 Not Found` because relationship and tree routes were not implemented yet.
+- Green verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: 8 passed, 1 existing Starlette/httpx deprecation warning.
+
+Verification:
+
+- `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest -q`
+  - pass; 34 passed, 1 existing Starlette/httpx deprecation warning.
+
+Execution-time adjustments against the literal Task 6 file list:
+
+- No database migration was added because the `relationships` table, enum values, foreign keys, self-link check, and unique pair constraint already existed from Task 3.
+- Relationship rule violations currently return `409 Conflict`; missing people or relationships return `404 Not Found`.
+
+### Tasks 7-10
 
 Status: not started
 
 Remaining planned work:
 
-- Task 6: relationship rules and tree payload
 - Task 7: Vue frontend and auth flow
 - Task 8: tree viewer and person details panel
 - Task 9: moderator editing and quick-jump search
@@ -407,7 +456,9 @@ At that point, the exact Task 2 health test passed in-container.
 - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - pass; 8 passed.
 - `docker compose run --rm api pytest -q`
-  - pass; 26 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 34 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
   - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`
@@ -469,13 +520,13 @@ Diff against the pre-implementation branch point:
 
 ## Recommended Next Step
 
-Begin Task 6: relationship rules and tree payload.
+Begin Task 7: Vue frontend and auth flow.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 6: relationship rules and tree payload
+- Task 7: Vue frontend and auth flow
 
 If resuming in the same environment, first check Docker availability:
 
