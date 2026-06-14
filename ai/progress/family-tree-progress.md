@@ -336,6 +336,8 @@ Completed work:
 - Added `api/app/services/person_service.py` for SQLAlchemy-backed people operations.
 - Added `api/app/api/routes/people.py` with authenticated read routes and moderator/owner write checks.
 - Included the people router from `api/app/api/router.py`.
+- Review follow-up added explicit auth-edge tests for unauthenticated reads, viewer write denial, and owner updates.
+- Review follow-up added API validation for null and overlong `fullName` values so invalid requests return 422 instead of database errors.
 
 Current TDD status:
 
@@ -345,6 +347,12 @@ Current TDD status:
 - Green verification complete:
   - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
   - Result: 7 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: expected failure, 2 failed and 10 passed. Explicit null and overlong `fullName` values reached database constraints instead of returning 422.
+- Review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: 12 passed, 1 existing Starlette/httpx deprecation warning.
 
 Verification:
 
@@ -354,11 +362,17 @@ Verification:
   - pass; 7 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose run --rm api pytest -q`
   - pass; 21 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - pass; 12 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest -q`
+  - pass; 26 passed, 1 existing Starlette/httpx deprecation warning.
 
 Execution-time adjustments against the literal Task 5 file list:
 
 - Added a viewer get-person test to cover `GET /api/v1/people/{person_id}` from the planned route list.
 - Added an owner create test to verify owners share moderator write permissions.
+- Added unauthenticated list, viewer update denial, and owner update tests during review follow-up.
+- Added a `fullName` API max length matching the database column and rejected explicit null `fullName` updates.
 
 ### Tasks 6-10
 
@@ -389,11 +403,11 @@ At that point, the exact Task 2 health test passed in-container.
 - `docker compose build api`
   - pass.
 - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
-  - pass; 7 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 12 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - pass; 8 passed.
 - `docker compose run --rm api pytest -q`
-  - pass; 21 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 26 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
   - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`

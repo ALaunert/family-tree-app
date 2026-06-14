@@ -99,6 +99,25 @@ def test_viewer_cannot_create_people(authenticated_viewer_client):
     assert response.status_code == 403
 
 
+def test_unauthenticated_user_cannot_list_people(client):
+    response = client.get("/api/v1/people")
+
+    assert response.status_code == 401
+
+
+def test_viewer_cannot_update_people(authenticated_viewer_client, db_session):
+    person = Person(full_name="Read Only")
+    db_session.add(person)
+    db_session.commit()
+
+    response = authenticated_viewer_client.patch(
+        f"/api/v1/people/{person.id}",
+        json={"fullName": "Changed"},
+    )
+
+    assert response.status_code == 403
+
+
 def test_moderator_can_create_people(authenticated_moderator_client):
     response = authenticated_moderator_client.post(
         "/api/v1/people",
@@ -129,6 +148,20 @@ def test_owner_can_create_people(authenticated_owner_client):
     assert response.json()["fullName"] == "Owner Created"
 
 
+def test_owner_can_update_people(authenticated_owner_client, db_session):
+    person = Person(full_name="Owner Editable")
+    db_session.add(person)
+    db_session.commit()
+
+    response = authenticated_owner_client.patch(
+        f"/api/v1/people/{person.id}",
+        json={"notes": "Owner update"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["notes"] == "Owner update"
+
+
 def test_moderator_can_update_people(authenticated_moderator_client, db_session):
     person = Person(full_name="Original Name", birth_date=date(1970, 1, 1))
     db_session.add(person)
@@ -157,6 +190,31 @@ def test_blank_full_name_is_rejected(authenticated_moderator_client):
     response = authenticated_moderator_client.post(
         "/api/v1/people",
         json={"fullName": "   "},
+    )
+
+    assert response.status_code == 422
+
+
+def test_null_full_name_update_is_rejected(
+    authenticated_moderator_client,
+    db_session,
+):
+    person = Person(full_name="Existing Person")
+    db_session.add(person)
+    db_session.commit()
+
+    response = authenticated_moderator_client.patch(
+        f"/api/v1/people/{person.id}",
+        json={"fullName": None},
+    )
+
+    assert response.status_code == 422
+
+
+def test_full_name_too_long_is_rejected(authenticated_moderator_client):
+    response = authenticated_moderator_client.post(
+        "/api/v1/people",
+        json={"fullName": "A" * 201},
     )
 
     assert response.status_code == 422

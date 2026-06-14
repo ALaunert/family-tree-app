@@ -3,10 +3,13 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+FULL_NAME_MAX_LENGTH = 200
+
+
 class PersonCreate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    full_name: str = Field(alias="fullName")
+    full_name: str = Field(alias="fullName", max_length=FULL_NAME_MAX_LENGTH)
     birth_date: date | None = Field(default=None, alias="birthDate")
     death_date: date | None = Field(default=None, alias="deathDate")
     notes: str | None = None
@@ -23,7 +26,11 @@ class PersonCreate(BaseModel):
 class PersonUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    full_name: str | None = Field(default=None, alias="fullName")
+    full_name: str | None = Field(
+        default=None,
+        alias="fullName",
+        max_length=FULL_NAME_MAX_LENGTH,
+    )
     birth_date: date | None = Field(default=None, alias="birthDate")
     death_date: date | None = Field(default=None, alias="deathDate")
     notes: str | None = None
@@ -32,7 +39,7 @@ class PersonUpdate(BaseModel):
     @classmethod
     def validate_full_name(cls, value: str | None) -> str | None:
         if value is None:
-            return value
+            raise ValueError("fullName cannot be null")
 
         stripped = value.strip()
         if not stripped:
