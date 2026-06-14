@@ -232,6 +232,7 @@ Completed work:
 - Spec-review follow-up made owner bootstrap promote an existing same-email user to `owner`.
 - Code-review follow-up made owner bootstrap reset the password hash from `OWNER_PASSWORD` when ensuring an existing owner email.
 - Code-review follow-up added `SESSION_COOKIE_SECURE` and marks auth cookies as `Secure` by default.
+- Code-review follow-up invalidates existing sessions when owner bootstrap resets an existing account password.
 
 Current TDD status:
 
@@ -265,6 +266,12 @@ Current TDD status:
 - Code-review follow-up green verification complete:
   - `docker compose run --rm api pytest tests/auth/test_login.py -q`
   - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Session-invalidation follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 1 failed and 4 passed. Existing owner session remained valid after password reset.
+- Session-invalidation follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
 
 Verification:
 
@@ -288,6 +295,11 @@ Verification:
   - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
 - Code-review follow-up `docker compose run --rm api pytest -q`
   - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
+- Verification note: DB-mutating pytest commands must not be run in parallel against the shared `_test` database. A parallel auth-suite/full-suite run raced on cleanup and produced transient integrity errors; rerunning the auth suite alone passed.
+- Session-invalidation follow-up `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Session-invalidation follow-up `docker compose run --rm api pytest -q`
+  - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
 
 Execution-time adjustments against the literal Task 4 file list:
 
@@ -297,6 +309,7 @@ Execution-time adjustments against the literal Task 4 file list:
 - Used plain `str` email fields in auth schemas instead of Pydantic `EmailStr` to avoid adding an unrelated optional validation dependency for this task.
 - Added `SESSION_COOKIE_SECURE` to `.env.example`, `compose.yml`, and API settings as a security-hardening follow-up from code review. The default is `true`.
 - Updated the API test client to use an HTTPS base URL so secure cookies are sent during authenticated route tests.
+- Avoid running DB-mutating API pytest commands in parallel unless they use isolated database names.
 
 ### Tasks 5-10
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -78,6 +78,7 @@ def get_or_create_owner(db: Session, email: str, password: str) -> User:
     if user is not None:
         user.role = UserRole.OWNER
         user.password_hash = hash_password(password)
+        db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
         db.commit()
         db.refresh(user)
         return user

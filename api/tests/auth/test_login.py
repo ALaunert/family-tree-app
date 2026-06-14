@@ -65,9 +65,14 @@ def test_logout_clears_cookie_and_deletes_server_session(
 
 
 def test_seed_owner_promotes_existing_user_email_and_resets_password(
-    db_session, user_factory
+    client, db_session, user_factory
 ):
     user = user_factory(email="owner@example.com", role=UserRole.VIEWER)
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": user.email, "password": "secret-password"},
+    )
+    assert login_response.status_code == 200
 
     owner = get_or_create_owner(
         db_session,
@@ -79,3 +84,8 @@ def test_seed_owner_promotes_existing_user_email_and_resets_password(
     assert owner.role == UserRole.OWNER
     assert authenticate_user(db_session, user.email, "new-owner-password") == owner
     assert authenticate_user(db_session, user.email, "secret-password") is None
+    assert db_session.scalar(select(AuthSession)) is None
+
+    response = client.get("/api/v1/auth/me")
+
+    assert response.status_code == 401
