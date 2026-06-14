@@ -76,10 +76,10 @@ def create_user(db: Session, email: str, password: str, role: UserRole) -> User:
 def get_or_create_owner(db: Session, email: str, password: str) -> User:
     user = db.scalar(select(User).where(User.email == email))
     if user is not None:
-        if user.role != UserRole.OWNER:
-            user.role = UserRole.OWNER
-            db.commit()
-            db.refresh(user)
+        user.role = UserRole.OWNER
+        user.password_hash = hash_password(password)
+        db.commit()
+        db.refresh(user)
         return user
 
     return create_user(db, email=email, password=password, role=UserRole.OWNER)

@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from app.models.auth_session import AuthSession
 from app.models.user import UserRole
-from app.services.auth_service import get_or_create_owner
+from app.services.auth_service import authenticate_user, get_or_create_owner
 
 
 def test_login_sets_session_cookie(client, user_factory):
@@ -18,6 +18,9 @@ def test_login_sets_session_cookie(client, user_factory):
         "user": {"id": user.id, "email": user.email, "role": "viewer"}
     }
     assert response.cookies.get("family_tree_session")
+    assert "HttpOnly" in response.headers["set-cookie"]
+    assert "SameSite=lax" in response.headers["set-cookie"]
+    assert "Secure" in response.headers["set-cookie"]
 
 
 def test_me_requires_authentication(client):
@@ -61,14 +64,18 @@ def test_logout_clears_cookie_and_deletes_server_session(
     assert db_session.scalar(select(AuthSession)) is None
 
 
-def test_seed_owner_promotes_existing_user_email(db_session, user_factory):
+def test_seed_owner_promotes_existing_user_email_and_resets_password(
+    db_session, user_factory
+):
     user = user_factory(email="owner@example.com", role=UserRole.VIEWER)
 
     owner = get_or_create_owner(
         db_session,
         email=user.email,
-        password="unused-new-password",
+        password="new-owner-password",
     )
 
     assert owner.id == user.id
     assert owner.role == UserRole.OWNER
+    assert authenticate_user(db_session, user.email, "new-owner-password") == owner
+    assert authenticate_user(db_session, user.email, "secret-password") is None

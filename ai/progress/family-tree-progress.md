@@ -229,6 +229,9 @@ Completed work:
 - Replaced placeholder `seed-owner` and `create-user` Make targets.
 - Updated README with owner bootstrap and CLI user creation instructions.
 - Wired `SESSION_TTL_HOURS`, `OWNER_EMAIL`, and `OWNER_PASSWORD` into the API container environment so the required compose-run owner smoke command works.
+- Spec-review follow-up made owner bootstrap promote an existing same-email user to `owner`.
+- Code-review follow-up made owner bootstrap reset the password hash from `OWNER_PASSWORD` when ensuring an existing owner email.
+- Code-review follow-up added `SESSION_COOKIE_SECURE` and marks auth cookies as `Secure` by default.
 
 Current TDD status:
 
@@ -250,6 +253,18 @@ Current TDD status:
 - Final green verification:
   - `docker compose run --rm api pytest tests/auth/test_login.py -q`
   - Result: 4 passed, 1 existing Starlette/httpx deprecation warning.
+- Spec-review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 1 failed and 4 passed. Existing same-email viewer was not promoted to `owner`.
+- Spec-review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Code-review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 2 failed and 3 passed. Session cookie lacked `Secure`, and owner promotion did not reset the password hash.
+- Code-review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
 
 Verification:
 
@@ -265,6 +280,14 @@ Verification:
   - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose build api`
   - pass.
+- Spec-review follow-up `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Spec-review follow-up `docker compose run --rm api pytest -q`
+  - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
+- Code-review follow-up `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Code-review follow-up `docker compose run --rm api pytest -q`
+  - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
 
 Execution-time adjustments against the literal Task 4 file list:
 
@@ -272,6 +295,8 @@ Execution-time adjustments against the literal Task 4 file list:
 - Added `session_ttl_hours` to `api/app/core/config.py`; this keeps the existing `SESSION_TTL_HOURS` setting wired into the auth session lifetime.
 - Modified `compose.yml` to pass `SESSION_TTL_HOURS`, `OWNER_EMAIL`, and `OWNER_PASSWORD` into the API container. This was required for the exact owner smoke command to pass using the repo's existing `.env.example` defaults.
 - Used plain `str` email fields in auth schemas instead of Pydantic `EmailStr` to avoid adding an unrelated optional validation dependency for this task.
+- Added `SESSION_COOKIE_SECURE` to `.env.example`, `compose.yml`, and API settings as a security-hardening follow-up from code review. The default is `true`.
+- Updated the API test client to use an HTTPS base URL so secure cookies are sent during authenticated route tests.
 
 ### Tasks 5-10
 

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
+from app.core.config import settings
 from app.schemas.auth import AuthUserResponse, LoginRequest, UserRead
 from app.services.auth_service import (
     SESSION_COOKIE_MAX_AGE,
@@ -39,6 +40,7 @@ def login(
         samesite="lax",
         max_age=SESSION_COOKIE_MAX_AGE,
         path="/",
+        secure=settings.session_cookie_secure,
     )
     return AuthUserResponse(user=UserRead(id=user.id, email=user.email, role=user.role))
 
@@ -53,7 +55,11 @@ def logout(
         delete_auth_session(db, family_tree_session)
 
     response.status_code = status.HTTP_204_NO_CONTENT
-    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    response.delete_cookie(
+        SESSION_COOKIE_NAME,
+        path="/",
+        secure=settings.session_cookie_secure,
+    )
     return response
 
 
