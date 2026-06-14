@@ -462,9 +462,12 @@ Completed work:
 - Added session bootstrap and shared `fetchJson` helper.
 - Added login page with email/password form, API submission, basic error state, and successful redirect.
 - Added Vitest setup and a small render helper for future frontend tests.
-- Wired `compose.yml` so the web service bind-mounts source and keeps dependencies in a named `web-node-modules` volume.
+- Wired `compose.yml` so the web service bind-mounts frontend source/config while preserving image-installed dependencies from `npm ci`.
 - Replaced the placeholder `make test-web` target with the frontend Vitest command.
 - Updated the web Dockerfile to install dependencies with `npm ci` and run Vite by default.
+- Review follow-up preserves guarded redirect targets after login.
+- Review follow-up forces protected-route session revalidation and resets module session state between tests.
+- Review follow-up removed the named `web-node-modules` volume to avoid dependency drift from `package-lock.json`.
 
 Current TDD status:
 
@@ -482,6 +485,12 @@ Current TDD status:
 - Green verification complete:
   - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
   - Result: 1 test passed.
+- Review follow-up red verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts src/app/session.test.ts`
+  - Result: expected failure, 2 failed and 1 passed. Login ignored `?redirect=...`, and forced session refresh still returned the cached user.
+- Review follow-up green verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts src/app/session.test.ts`
+  - Result: 3 passed.
 
 Verification:
 
@@ -495,6 +504,14 @@ Verification:
   - pass; found 0 vulnerabilities after targeted Vite/Vitest toolchain updates.
 - `docker compose build web`
   - pass; `npm ci` found 0 vulnerabilities.
+- Review follow-up `docker compose run --rm web npm run test -- --run`
+  - pass; 3 passed.
+- Review follow-up `docker compose run --rm web npm run typecheck`
+  - pass.
+- Review follow-up `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- Review follow-up `docker compose build web`
+  - pass.
 
 Execution-time adjustments against the literal Task 7 file list:
 
@@ -503,6 +520,7 @@ Execution-time adjustments against the literal Task 7 file list:
 - Added `@testing-library/jest-dom`, `@types/node`, and `type-fest` dev dependencies. `jest-dom` supports the test setup import, `@types/node` supports Vite config typing, and `type-fest` fills a missing declaration import from `@testing-library/vue`.
 - Set `skipLibCheck` in `web/tsconfig.json` because the compatible `type-fest` declarations otherwise trigger TypeScript recursion errors inside third-party `.d.ts` files.
 - Initial frontend toolchain versions reported 6 dependency audit vulnerabilities through the Vite/esbuild chain. Targeted updates to current Vite, Vitest, Vue plugin, and `vue-tsc` resolved the audit before commit.
+- Compose now bind-mounts only frontend source/config files into the web container; package changes require rebuilding the web image so `node_modules` stays aligned with the committed lockfile.
 
 ### Tasks 8-10
 

@@ -27,7 +27,7 @@ router.beforeEach(async (to) => {
     return true;
   }
 
-  const user = await bootstrapSession();
+  const user = await bootstrapSession({ forceRefresh: true });
   if (user === null) {
     return { path: "/login", query: { redirect: to.fullPath } };
   }

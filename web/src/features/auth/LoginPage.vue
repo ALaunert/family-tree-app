@@ -74,12 +74,20 @@ export default defineComponent({
         });
 
         setCurrentUser(response.user);
-        await this.$router.push("/tree");
+        await this.$router.push(this.redirectTarget());
       } catch (error) {
         this.error = "Invalid email or password";
       } finally {
         this.isSubmitting = false;
       }
+    },
+    redirectTarget() {
+      const redirect = this.$route?.query.redirect;
+      if (typeof redirect === "string" && redirect.startsWith("/")) {
+        return redirect;
+      }
+
+      return "/tree";
     },
   },
 });

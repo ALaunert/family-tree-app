@@ -41,4 +41,33 @@ describe("LoginPage", () => {
     });
     expect(push).toHaveBeenCalledWith("/tree");
   });
+
+  test("redirects to guarded target after sign in", async () => {
+    const push = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        user: { id: 1, email: "owner@example.com", role: "owner" },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(LoginPage, {
+      global: {
+        mocks: {
+          $route: { query: { redirect: "/tree?person=123#details" } },
+          $router: { push },
+        },
+      },
+    });
+
+    await userEvent.type(screen.getByLabelText("Email"), "owner@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "change-me");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(push).toHaveBeenCalledWith("/tree?person=123#details");
+  });
 });

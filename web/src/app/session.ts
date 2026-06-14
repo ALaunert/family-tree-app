@@ -14,8 +14,14 @@ interface AuthUserResponse {
 
 let currentUser: SessionUser | null | undefined;
 
-export async function bootstrapSession(): Promise<SessionUser | null> {
-  if (currentUser !== undefined) {
+interface BootstrapSessionOptions {
+  forceRefresh?: boolean;
+}
+
+export async function bootstrapSession(
+  options: BootstrapSessionOptions = {},
+): Promise<SessionUser | null> {
+  if (!options.forceRefresh && currentUser !== undefined) {
     return currentUser;
   }
 
@@ -31,4 +37,8 @@ export async function bootstrapSession(): Promise<SessionUser | null> {
 
 export function setCurrentUser(user: SessionUser | null): void {
   currentUser = user;
+}
+
+export function resetSessionForTests(): void {
+  currentUser = undefined;
 }

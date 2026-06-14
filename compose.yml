@@ -38,9 +38,11 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./web:/app
-      - web-node-modules:/app/node_modules
+      - ./web/index.html:/app/index.html
+      - ./web/src:/app/src
+      - ./web/tsconfig.json:/app/tsconfig.json
+      - ./web/tsconfig.node.json:/app/tsconfig.node.json
+      - ./web/vite.config.ts:/app/vite.config.ts
 
 volumes:
   postgres-data:
-  web-node-modules:
