@@ -402,6 +402,10 @@ Completed work:
 - Added `api/app/services/tree_service.py` to assemble the tree payload.
 - Added `api/app/api/routes/relationships.py` and `api/app/api/routes/tree.py`.
 - Included the relationship and tree routers from `api/app/api/router.py`.
+- Review follow-up changed tree relationship entries to use the documented `type` key while keeping relationship write schemas on `relationshipType`.
+- Review follow-up serializes relationship writes with a table lock before rule checks and insert.
+- Review follow-up maps relationship `IntegrityError` failures to API-level `404` or `409` responses instead of unhandled 500s.
+- Review follow-up added auth and validation edge coverage for unauthenticated relationship creates, viewer deletes, missing people, self-links, and integrity conflicts.
 
 Current TDD status:
 
@@ -411,6 +415,12 @@ Current TDD status:
 - Green verification complete:
   - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
   - Result: 8 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: expected failure, 2 failed and 11 passed. The tree payload returned `relationshipType` instead of `type`, and DB integrity mapping had no service seam yet.
+- Review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: 13 passed, 1 existing Starlette/httpx deprecation warning.
 
 Verification:
 
@@ -418,11 +428,17 @@ Verification:
   - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose run --rm api pytest -q`
   - pass; 34 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
 
 Execution-time adjustments against the literal Task 6 file list:
 
 - No database migration was added because the `relationships` table, enum values, foreign keys, self-link check, and unique pair constraint already existed from Task 3.
 - Relationship rule violations currently return `409 Conflict`; missing people or relationships return `404 Not Found`.
+- `GET /api/v1/tree` relationship entries use `type` per the plan's documented tree DTO; standalone relationship route responses use `relationshipType`.
+- Relationship writes lock the `relationships` table in `SHARE ROW EXCLUSIVE` mode to serialize invariant checks and inserts.
 
 ### Tasks 7-10
 
@@ -456,9 +472,9 @@ At that point, the exact Task 2 health test passed in-container.
 - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
   - pass; 8 passed.
 - `docker compose run --rm api pytest -q`
-  - pass; 34 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
-  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
+  - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
   - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
 - `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`

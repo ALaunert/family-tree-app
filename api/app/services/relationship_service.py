@@ -1,4 +1,5 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.person import Person
@@ -22,6 +23,8 @@ def create_relationship(
     db: Session,
     relationship_create: RelationshipCreate,
 ) -> Relationship:
+    _lock_relationship_writes(db)
+
     relationship_type = relationship_create.relationship_type
     source_person_id = relationship_create.source_person_id
     target_person_id = relationship_create.target_person_id
@@ -55,7 +58,12 @@ def create_relationship(
         target_person_id=target_person_id,
     )
     db.add(relationship)
-    db.commit()
+    try:
+        _commit_relationship(db)
+    except IntegrityError as exc:
+        db.rollback()
+        _raise_relationship_error_from_integrity_error(exc)
+
     db.refresh(relationship)
     return relationship
 
@@ -81,6 +89,35 @@ def _relationship_exists(
         )
         is not None
     )
+
+
+def _lock_relationship_writes(db: Session) -> None:
+    db.execute(text("LOCK TABLE relationships IN SHARE ROW EXCLUSIVE MODE"))
+
+
+def _commit_relationship(db: Session) -> None:
+    db.commit()
+
+
+def _raise_relationship_error_from_integrity_error(exc: IntegrityError) -> None:
+    constraint_name = _integrity_constraint_name(exc)
+    if constraint_name == "relationships_source_person_id_fkey":
+        raise LookupError("Person not found") from exc
+    if constraint_name == "relationships_target_person_id_fkey":
+        raise LookupError("Person not found") from exc
+
+    raise RelationshipRuleError("Relationship conflicts with existing data") from exc
+
+
+def _integrity_constraint_name(exc: IntegrityError) -> str | None:
+    orig = exc.orig
+    diagnostics = getattr(orig, "diag", None)
+    if diagnostics is not None:
+        constraint_name = getattr(diagnostics, "constraint_name", None)
+        if constraint_name is not None:
+            return constraint_name
+
+    return getattr(orig, "constraint_name", None)
 
 
 def _parent_count(db: Session, child_id: int) -> int:

@@ -87,7 +87,7 @@ def test_tree_returns_viewer_role_people_and_relationships(
         "relationships": [
             {
                 "id": relationship.id,
-                "relationshipType": "parent_child",
+                "type": "parent_child",
                 "sourcePersonId": parent.id,
                 "targetPersonId": child.id,
             },

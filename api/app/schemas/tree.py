@@ -1,8 +1,17 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.relationship import RelationshipType
 from app.models.user import UserRole
 from app.schemas.person import PersonRead
-from app.schemas.relationship import RelationshipRead
+
+
+class TreeRelationshipRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: int
+    relationship_type: RelationshipType = Field(alias="type")
+    source_person_id: int = Field(alias="sourcePersonId")
+    target_person_id: int = Field(alias="targetPersonId")
 
 
 class TreeRead(BaseModel):
@@ -10,4 +19,4 @@ class TreeRead(BaseModel):
 
     viewer_role: UserRole = Field(alias="viewerRole")
     people: list[PersonRead]
-    relationships: list[RelationshipRead]
+    relationships: list[TreeRelationshipRead]

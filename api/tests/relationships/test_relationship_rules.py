@@ -1,8 +1,10 @@
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.models.person import Person
 from app.models.relationship import Relationship, RelationshipType
 from app.models.user import UserRole
+from app.services import relationship_service
 
 
 def _login(client, user_factory, *, email: str, role: UserRole):
@@ -162,6 +164,101 @@ def test_viewer_cannot_create_relationships(
     )
 
     assert response.status_code == 403
+
+
+def test_unauthenticated_user_cannot_create_relationships(client, db_session):
+    parent = _person(db_session, "Anonymous Parent")
+    child = _person(db_session, "Anonymous Child")
+
+    response = _create_relationship(
+        client,
+        relationship_type="parent_child",
+        source_id=parent.id,
+        target_id=child.id,
+    )
+
+    assert response.status_code == 401
+
+
+def test_viewer_cannot_delete_relationships(
+    authenticated_viewer_client,
+    db_session,
+):
+    parent = _person(db_session, "Viewer Delete Parent")
+    child = _person(db_session, "Viewer Delete Child")
+    relationship = Relationship(
+        relationship_type=RelationshipType.PARENT_CHILD,
+        source_person_id=parent.id,
+        target_person_id=child.id,
+    )
+    db_session.add(relationship)
+    db_session.commit()
+
+    response = authenticated_viewer_client.delete(
+        f"/api/v1/relationships/{relationship.id}",
+    )
+
+    assert response.status_code == 403
+
+
+def test_missing_person_relationship_is_rejected(
+    authenticated_moderator_client,
+    db_session,
+):
+    parent = _person(db_session, "Known Parent")
+
+    response = _create_relationship(
+        authenticated_moderator_client,
+        relationship_type="parent_child",
+        source_id=parent.id,
+        target_id=999999,
+    )
+
+    assert response.status_code == 404
+
+
+def test_self_relationship_is_rejected(authenticated_moderator_client, db_session):
+    person = _person(db_session, "Self Linked")
+
+    response = _create_relationship(
+        authenticated_moderator_client,
+        relationship_type="parent_child",
+        source_id=person.id,
+        target_id=person.id,
+    )
+
+    assert response.status_code == 409
+
+
+def test_integrity_error_is_mapped_to_conflict(
+    authenticated_moderator_client,
+    db_session,
+    monkeypatch,
+):
+    parent = _person(db_session, "Race Parent")
+    child = _person(db_session, "Race Child")
+
+    def raise_integrity_error(db_session):
+        raise IntegrityError(
+            statement="INSERT INTO relationships ...",
+            params={},
+            orig=Exception("duplicate key"),
+        )
+
+    monkeypatch.setattr(
+        relationship_service,
+        "_commit_relationship",
+        raise_integrity_error,
+    )
+
+    response = _create_relationship(
+        authenticated_moderator_client,
+        relationship_type="parent_child",
+        source_id=parent.id,
+        target_id=child.id,
+    )
+
+    assert response.status_code == 409
 
 
 def test_owner_can_delete_relationship(
