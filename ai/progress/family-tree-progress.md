@@ -607,23 +607,26 @@ Present in the branch now:
 - backend skeleton files from Task 2
 - database layer, initial models, Alembic migration plumbing, and schema tests from Task 3
 - session auth, owner bootstrap, invited-user CLI, and auth tests from Task 4
-- no frontend app files yet beyond `web/Dockerfile`
+- people API, relationship rules, and tree payload APIs from Tasks 5-6
+- Vue/Vite frontend shell, auth flow, route guard, and web test tooling from Task 7
 
 Diff against the pre-implementation branch point:
 
 - Task 3 database schema was committed in `cf79957`.
 - Review follow-up fixes are recorded in a separate follow-up commit after `cf79957`.
 - Task 4 session auth was committed in `3d80324`.
+- Task 7 frontend shell was committed in `d5e4920`.
+- Task 7 review follow-up was committed in `454c4d0`.
 
 ## Recommended Next Step
 
-Begin Task 7: Vue frontend and auth flow.
+Begin Task 8: tree viewer and person details panel.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 7: Vue frontend and auth flow
+- Task 8: tree viewer and person details panel
 
 If resuming in the same environment, first check Docker availability:
 
