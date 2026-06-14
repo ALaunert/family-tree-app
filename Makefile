@@ -18,10 +18,10 @@ migrate:
 	docker compose run --rm api alembic upgrade head
 
 seed-owner:
-	docker compose exec api echo "TODO: seed owner user"
+	docker compose run --rm api python scripts/seed_owner.py
 
 create-user:
-	docker compose exec api echo "TODO: create an application user"
+	docker compose run --rm api python scripts/create_user.py --email "$(EMAIL)" --password "$(PASSWORD)" --role "$(ROLE)"
 
 test-api:
 	docker compose run --rm api pytest -q

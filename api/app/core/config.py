@@ -9,6 +9,7 @@ class Settings:
         "DATABASE_URL",
         "postgresql+psycopg://family_tree:family_tree@db:5432/family_tree",
     )
+    session_ttl_hours: int = int(os.environ.get("SESSION_TTL_HOURS", "168"))
 
 
 settings = Settings()

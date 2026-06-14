@@ -3,8 +3,11 @@
 import os
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
+from sqlalchemy import delete
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
@@ -65,3 +68,54 @@ def _prepare_test_database() -> None:
 
 
 _prepare_test_database()
+
+from app.db.session import SessionLocal
+from app.main import app
+from app.models.auth_session import AuthSession
+from app.models.person import Person
+from app.models.relationship import Relationship
+from app.models.user import User, UserRole
+
+
+@pytest.fixture
+def db_session():
+    with SessionLocal() as session:
+        database_name = session.execute(text("SELECT current_database()")).scalar_one()
+        assert database_name.endswith("_test")
+
+        for model in (Relationship, AuthSession, Person, User):
+            session.execute(delete(model))
+        session.commit()
+
+        yield session
+
+        session.rollback()
+        for model in (Relationship, AuthSession, Person, User):
+            session.execute(delete(model))
+        session.commit()
+
+
+@pytest.fixture
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def user_factory(db_session):
+    def create_user(
+        *,
+        email: str = "viewer@example.com",
+        password_hash: str = (
+            "$argon2id$v=19$m=65536,t=3,p=4$c29tZXRlc3RzYWx0MTIzNA"
+            "$/aVAkLDy4JEWDr+SbK7kextdytrxovV+AyRfsyUFqNs"
+        ),
+        role: UserRole = UserRole.VIEWER,
+    ) -> User:
+        user = User(email=email, password_hash=password_hash, role=role)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    return create_user

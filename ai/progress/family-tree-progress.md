@@ -8,12 +8,13 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 3.
+Implementation is through Task 4.
 
 - Task 1 is complete.
 - Task 2 is complete.
 - Task 3 is complete.
-- Tasks 4-10 are still pending.
+- Task 4 is complete.
+- Tasks 5-10 are still pending.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -204,13 +205,80 @@ Note:
 - Re-review migration downgrade decision: `20260321_0002` downgrade is intentionally a no-op because checked-in `20260321_0001` already defines the clean schema. Reversing `0002` should only move Alembic's version marker, not mutate the database back to the pre-review shape.
 - Re-review test database decision: pytest derives the test database name by appending `_test` to the configured database name and creates/migrates it automatically through the Postgres admin database. This keeps test cleanup away from non-test data while preserving the normal compose database.
 
-### Tasks 4-10
+### Task 4: Implement Session Auth and Owner Bootstrapping
+
+Status: complete
+
+Planned scope:
+
+- Session authentication with server-stored `auth_sessions` rows and an HTTP-only `family_tree_session` cookie.
+- Password hashing with Argon2 through `pwdlib[argon2]`.
+- Auth routes for login, logout, and current-user lookup.
+- Owner bootstrap and invited-user CLI scripts.
+- Make targets and README updates.
+
+Completed work:
+
+- Added failing-first auth tests for login cookie creation, unauthenticated `/me`, authenticated `/me`, and logout cookie/session cleanup.
+- Added password hashing and verification helpers in `api/app/core/security.py`.
+- Added DB and current-user dependencies in `api/app/api/deps.py`.
+- Added auth request/response schemas in `api/app/schemas/auth.py`.
+- Added auth service functions for login verification, session creation, session lookup, session deletion, user creation, and idempotent owner creation.
+- Added `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, and `GET /api/v1/auth/me`.
+- Added owner and user creation scripts under `api/scripts/`.
+- Replaced placeholder `seed-owner` and `create-user` Make targets.
+- Updated README with owner bootstrap and CLI user creation instructions.
+- Wired `SESSION_TTL_HOURS`, `OWNER_EMAIL`, and `OWNER_PASSWORD` into the API container environment so the required compose-run owner smoke command works.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 4 failed. All failures were 404s because auth routes were not implemented yet.
+- First green attempt:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: failed during import because the existing API image did not yet include newly declared `pwdlib`.
+  - Follow-up: `docker compose build api` installed the new dependency.
+- Second green attempt:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: failed during import because `EmailStr` required the optional `email-validator` package.
+  - Follow-up: auth schemas were simplified to plain `str` emails to avoid an unneeded extra dependency.
+- Third green attempt:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 1 failed and 3 passed. Logout returned a response with no status code.
+  - Follow-up: logout now explicitly sets HTTP 204 before returning the injected response.
+- Final green verification:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 4 passed, 1 existing Starlette/httpx deprecation warning.
+
+Verification:
+
+- `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 4 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api python scripts/seed_owner.py`
+  - pass; printed `Owner user ready: owner@example.com`.
+- `docker compose run --rm api python scripts/seed_owner.py`
+  - pass on second run; printed `Owner user ready: owner@example.com`.
+- `docker compose exec db psql -U family_tree -d family_tree -tAc "SELECT count(*) FROM users WHERE email = 'owner@example.com' AND role = 'owner';"`
+  - pass; returned `1`.
+- `docker compose run --rm api pytest -q`
+  - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose build api`
+  - pass.
+
+Execution-time adjustments against the literal Task 4 file list:
+
+- Added `pwdlib[argon2]` to `api/pyproject.toml`; this was required by the task but not listed in the Task 4 file list.
+- Added `session_ttl_hours` to `api/app/core/config.py`; this keeps the existing `SESSION_TTL_HOURS` setting wired into the auth session lifetime.
+- Modified `compose.yml` to pass `SESSION_TTL_HOURS`, `OWNER_EMAIL`, and `OWNER_PASSWORD` into the API container. This was required for the exact owner smoke command to pass using the repo's existing `.env.example` defaults.
+- Used plain `str` email fields in auth schemas instead of Pydantic `EmailStr` to avoid adding an unrelated optional validation dependency for this task.
+
+### Tasks 5-10
 
 Status: not started
 
 Remaining planned work:
 
-- Task 4: session auth and owner bootstrapping
 - Task 5: people CRUD and role checks
 - Task 6: relationship rules and tree payload
 - Task 7: Vue frontend and auth flow
