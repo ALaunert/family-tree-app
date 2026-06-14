@@ -8,7 +8,7 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 6.
+Implementation is through Task 7.
 
 - Task 1 is complete.
 - Task 2 is complete.
@@ -16,7 +16,8 @@ Implementation is through Task 6.
 - Task 4 is complete.
 - Task 5 is complete.
 - Task 6 is complete.
-- Tasks 7-10 are still pending.
+- Task 7 is complete.
+- Tasks 8-10 are still pending.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -440,13 +441,75 @@ Execution-time adjustments against the literal Task 6 file list:
 - `GET /api/v1/tree` relationship entries use `type` per the plan's documented tree DTO; standalone relationship route responses use `relationshipType`.
 - Relationship writes lock the `relationships` table in `SHARE ROW EXCLUSIVE` mode to serialize invariant checks and inserts.
 
-### Tasks 7-10
+### Task 7: Vue Frontend and Auth Flow
+
+Status: complete
+
+Planned scope:
+
+- Vue 3 + TypeScript + Vite app shell.
+- Vite proxy for `/api` to `http://api:8000`.
+- `/login` and `/tree` routes.
+- Session bootstrap through `GET /api/v1/auth/me`.
+- Route guard redirecting unauthenticated users to `/login`.
+- `fetchJson` with `credentials: "include"`.
+- Login form posting credentials to `/api/v1/auth/login` and redirecting to `/tree` on success.
+
+Completed work:
+
+- Added the frontend package, TypeScript, Vite, Vitest, Vue Testing Library, and lockfile.
+- Added the Vue app entry point, router, basic app shell, and placeholder tree page for Task 8.
+- Added session bootstrap and shared `fetchJson` helper.
+- Added login page with email/password form, API submission, basic error state, and successful redirect.
+- Added Vitest setup and a small render helper for future frontend tests.
+- Wired `compose.yml` so the web service bind-mounts source and keeps dependencies in a named `web-node-modules` volume.
+- Replaced the placeholder `make test-web` target with the frontend Vitest command.
+- Updated the web Dockerfile to install dependencies with `npm ci` and run Vite by default.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: expected failure, exit 254. `npm` could not find `/app/package.json` because the frontend app/test runner had not been bootstrapped yet.
+- First green attempt:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: failed before tests because `docker compose run web` tried to start the API via `depends_on`, and host port `8000` was already allocated.
+  - Follow-up: removed the web service's unnecessary `depends_on`; the unit test mocks `fetch` and does not need the API container.
+- Second green attempt:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: failed with `sh: vitest: not found` because the named `node_modules` volume had not been populated after adding `package.json`.
+  - Follow-up: ran `docker compose run --rm web npm install` to install dependencies and generate `package-lock.json`.
+- Green verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: 1 test passed.
+
+Verification:
+
+- `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - pass; 1 test passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 1 test passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities after targeted Vite/Vitest toolchain updates.
+- `docker compose build web`
+  - pass; `npm ci` found 0 vulnerabilities.
+
+Execution-time adjustments against the literal Task 7 file list:
+
+- Added `web/package-lock.json` so container dependency installs are reproducible.
+- Modified `web/Dockerfile`, which was not in the literal Task 7 modify list, because the existing placeholder image did not install dependencies or start Vite.
+- Added `@testing-library/jest-dom`, `@types/node`, and `type-fest` dev dependencies. `jest-dom` supports the test setup import, `@types/node` supports Vite config typing, and `type-fest` fills a missing declaration import from `@testing-library/vue`.
+- Set `skipLibCheck` in `web/tsconfig.json` because the compatible `type-fest` declarations otherwise trigger TypeScript recursion errors inside third-party `.d.ts` files.
+- Initial frontend toolchain versions reported 6 dependency audit vulnerabilities through the Vite/esbuild chain. Targeted updates to current Vite, Vitest, Vue plugin, and `vue-tsc` resolved the audit before commit.
+
+### Tasks 8-10
 
 Status: not started
 
 Remaining planned work:
 
-- Task 7: Vue frontend and auth flow
 - Task 8: tree viewer and person details panel
 - Task 9: moderator editing and quick-jump search
 - Task 10: end-to-end journeys, smoke coverage, and final docs

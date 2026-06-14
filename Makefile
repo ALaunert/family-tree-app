@@ -27,7 +27,7 @@ test-api:
 	docker compose run --rm api pytest -q
 
 test-web:
-	docker compose exec web echo "TODO: run web tests"
+	docker compose run --rm web npm run test -- --run
 
 test-e2e:
 	docker compose exec web echo "TODO: run end-to-end tests"
