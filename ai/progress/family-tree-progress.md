@@ -8,7 +8,7 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 8.
+Implementation is through Task 9.
 
 - Task 1 is complete.
 - Task 2 is complete.
@@ -18,7 +18,8 @@ Implementation is through Task 8.
 - Task 6 is complete.
 - Task 7 is complete.
 - Task 8 is complete.
-- Tasks 9-10 are still pending.
+- Task 9 is complete.
+- Task 10 is still pending.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -596,13 +597,70 @@ Execution-time adjustments against the literal Task 8 file list:
 - Modified `web/src/test/setup.ts` to provide jsdom element dimensions used by graph-related tests.
 - The `TreePage` unit test stubs `FamilyTreeCanvas` so it verifies the page-level selection/details behavior without coupling that test to Vue Flow's jsdom layout internals. The production canvas component still renders `<VueFlow />`, `<Controls />`, and `<Background />`.
 
-### Tasks 9-10
+### Task 9: Moderator Editing and Quick-Jump Search
+
+Status: complete
+
+Planned scope:
+
+- Quick-jump person search against the already-loaded tree people.
+- Moderator-only controls on the tree-first interface.
+- Person create/update drawer.
+- Relationship form for adding partner and parent-child links and removing existing relationships.
+- Frontend write API wrappers for existing moderator/owner backend endpoints.
+- Tree refetch after successful editor writes.
+
+Completed work:
+
+- Added `PersonSearch.vue` with local search state and computed filtering over loaded people, with no debounce.
+- Added `moderatorApi.ts` wrappers for person create/update and relationship create/delete writes.
+- Added `EditPersonDrawer.vue` for add/edit person flows.
+- Added `RelationshipForm.vue` for partner, parent, child, and remove relationship flows.
+- Updated `TreePage.vue` with quick-jump search, moderator-only Add person controls, editor orchestration, and tree refetch after saves.
+- Updated `PersonDetailsPanel.vue` with a moderator-only Edit person action.
+- Added `EditPersonDrawer.test.ts` covering moderator control visibility and quick-jump filtering.
+- Code-review follow-up changed `createRelationship()` to return `Promise<void>` because standalone relationship writes return `relationshipType`, while tree relationship DTOs use `type`.
+- Code-review follow-up tightened the quick-jump test so non-matching people are absent after filtering.
+
+Current TDD status:
+
+- Red verification was performed by the Task 9 implementer subagent:
+  - `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - Result: expected failure because `../search/PersonSearch.vue` did not exist yet.
+- Green verification:
+  - `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - Result: 2 passed.
+- Code-review follow-up verification:
+  - `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - Result: 2 passed after the API contract and search assertion fixes.
+
+Verification:
+
+- `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - pass; 2 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+- `git diff --check`
+  - pass.
+
+Execution-time adjustments against the literal Task 9 file list:
+
+- No new dependency was needed.
+- The quick-jump search uses Vue Options API `data()` plus a computed filtered list, matching the existing frontend component style while preserving the plan's reactive-state/computed-list intent.
+- `RelationshipForm.vue` leaves deeper invalid-choice filtering to backend validation for v1. The code reviewer noted that pre-filtering obvious duplicates or full parent slots would improve moderator UX later, but server-side relationship rules remain authoritative.
+
+### Task 10
 
 Status: not started
 
 Remaining planned work:
 
-- Task 9: moderator editing and quick-jump search
 - Task 10: end-to-end journeys, smoke coverage, and final docs
 
 ## Verification Snapshot
@@ -650,6 +708,27 @@ At that point, the exact Task 2 health test passed in-container.
   - pass; found 0 vulnerabilities.
 - `docker compose build web`
   - pass.
+- Task 9 preflight `docker context show`
+  - pass; context was `desktop-linux`.
+- Task 9 preflight `ls -la ~/.docker/run`
+  - pass; `docker.sock` was present.
+- Task 9 preflight `docker compose run --rm api pytest tests/test_health.py -q`
+  - pass; 1 passed, 1 existing Starlette/httpx deprecation warning.
+- Task 9 preflight `docker compose build api`
+  - first attempt failed with a Docker Hub TLS handshake timeout while fetching the `python:3.12-slim` metadata token.
+  - pass on retry; root cause was a transient external registry/network timeout, not repo code.
+- `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - pass; 2 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+- `git diff --check`
+  - pass.
 
 ## Environment Notes
 
@@ -682,6 +761,16 @@ Current session state:
 
 This appears to be a sandbox permission issue, not a repo code issue.
 
+### 3. Docker Hub transient TLS timeout
+
+Observed during Task 9 preflight:
+
+- `docker compose build api` initially failed while fetching an anonymous Docker Hub token for `python:3.12-slim`.
+- Docker itself was healthy, `docker version` worked, the DB service was healthy, and the health test passed using the existing API image.
+- The same build command passed on retry.
+
+This was treated as a transient external registry/network issue and did not require repo code changes.
+
 ## Current File Surface vs Plan
 
 Present in the branch now:
@@ -693,6 +782,7 @@ Present in the branch now:
 - people API, relationship rules, and tree payload APIs from Tasks 5-6
 - Vue/Vite frontend shell, auth flow, route guard, and web test tooling from Task 7
 - tree viewer, Vue Flow/Dagre layout, person details panel, and tree selection tests from Task 8
+- moderator editing tools, quick-jump search, relationship form, and moderator UI tests from Task 9
 
 Diff against the pre-implementation branch point:
 
@@ -701,16 +791,17 @@ Diff against the pre-implementation branch point:
 - Task 4 session auth was committed in `3d80324`.
 - Task 7 frontend shell was committed in `d5e4920`.
 - Task 7 review follow-up was committed in `454c4d0`.
+- Task 8 tree viewer was committed in `c9bdaf4`.
 
 ## Recommended Next Step
 
-Begin Task 9: moderator editing and quick-jump search.
+Begin Task 10: end-to-end journeys, smoke coverage, and final docs.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 9: moderator editing and quick-jump search
+- Task 10: end-to-end journeys, smoke coverage, and final docs
 
 If resuming in the same environment, first check Docker availability:
 

@@ -4,6 +4,14 @@
       x
     </button>
     <h2>{{ person.fullName }}</h2>
+    <button
+      v-if="canEdit"
+      class="edit-button"
+      type="button"
+      @click="$emit('edit', person.id)"
+    >
+      Edit person
+    </button>
     <dl>
       <div v-if="person.birthDate">
         <dt>Born</dt>
@@ -59,9 +67,14 @@ export default defineComponent({
       type: Array as PropType<RelationshipDto[]>,
       required: true,
     },
+    canEdit: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: {
     close: () => true,
+    edit: (personId: number) => Number.isInteger(personId),
   },
   computed: {
     peopleById(): Map<number, PersonDto> {
@@ -142,6 +155,18 @@ h2 {
   padding-right: 36px;
   font-size: 1.35rem;
   line-height: 1.2;
+}
+
+.edit-button {
+  width: max-content;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #1f2933;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2933;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 h3 {
