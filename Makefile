@@ -30,7 +30,7 @@ test-web:
 	docker compose run --rm web npm run test -- --run
 
 test-e2e:
-	docker compose exec web echo "TODO: run end-to-end tests"
+	docker compose run --rm e2e npm run e2e
 
 test:
 	$(MAKE) test-api

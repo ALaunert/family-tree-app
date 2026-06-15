@@ -1,6 +1,6 @@
 # Family Tree App Progress
 
-Date: 2026-06-14
+Date: 2026-06-15
 Branch: `codex/family-tree-implementation`
 Worktree: `/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation`
 Primary plan: [2026-03-21-family-tree-app-implementation-plan.md](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/ai/plans/2026-03-21-family-tree-app-implementation-plan.md)
@@ -8,7 +8,7 @@ Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/project
 
 ## Summary
 
-Implementation is through Task 9.
+Implementation is through Task 10.
 
 - Task 1 is complete.
 - Task 2 is complete.
@@ -19,7 +19,7 @@ Implementation is through Task 9.
 - Task 7 is complete.
 - Task 8 is complete.
 - Task 9 is complete.
-- Task 10 is still pending.
+- Task 10 is complete locally and pending commit/push.
 
 The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
 
@@ -655,13 +655,83 @@ Execution-time adjustments against the literal Task 9 file list:
 - The quick-jump search uses Vue Options API `data()` plus a computed filtered list, matching the existing frontend component style while preserving the plan's reactive-state/computed-list intent.
 - `RelationshipForm.vue` leaves deeper invalid-choice filtering to backend validation for v1. The code reviewer noted that pre-filtering obvious duplicates or full parent slots would improve moderator UX later, but server-side relationship rules remain authoritative.
 
-### Task 10
+### Task 10: End-to-End Journeys, Smoke Coverage, and Final Docs
 
-Status: not started
+Status: complete locally, pending commit and push
 
-Remaining planned work:
+Planned scope:
 
-- Task 10: end-to-end journeys, smoke coverage, and final docs
+- Playwright config and e2e specs for login redirect, empty tree render, person details, and moderator editing.
+- Demo data seeding.
+- Runtime smoke script covering service startup, migrations, owner seed, demo seed, and API health.
+- Compose e2e service using the official Playwright image pinned to the `@playwright/test` version.
+- Makefile targets for e2e and smoke.
+- README workflow documentation.
+
+Completed local work:
+
+- Added `web/playwright.config.ts`.
+- Added `web/e2e/login.spec.ts`, `web/e2e/tree-viewer.spec.ts`, and `web/e2e/moderator.spec.ts`.
+- Added idempotent `api/scripts/seed_demo_data.py`.
+- Added `@playwright/test` and `npm run e2e`.
+- Added `e2e-api`, `e2e-web`, `e2e-setup`, and `e2e` compose services.
+- Replaced the placeholder `make test-e2e` target with `docker compose run --rm e2e npm run e2e`.
+- Updated `scripts/smoke.sh` to start services, run migrations, seed owner/demo data, and check API health.
+- Updated README with setup, command, verification, and demo-user documentation.
+- Added Playwright generated-output ignores to `.gitignore`.
+- Quality-review follow-up isolated e2e from the normal dev database by adding a tmpfs-backed `e2e-db` service.
+- Quality-review follow-up made the e2e Playwright service install dependencies into a named container volume instead of relying on host `web/node_modules`.
+- Quality-review follow-up added API health readiness checks before e2e web/tests run.
+- Quality-review follow-up made e2e setup reset only the isolated e2e database before seeding demo data.
+- Quality-review follow-up added retry polling to the smoke health check.
+
+Current TDD status:
+
+- Red verification was performed by the Task 10 implementer subagent:
+  - `docker compose run --rm e2e npm run e2e`
+  - Result: expected failure, `no such service: e2e`.
+- Green verification:
+  - `docker compose run --rm e2e npm run e2e`
+  - Result: 4 passed.
+- Quality-review follow-up green verification:
+  - `docker compose run --rm e2e npm run e2e`
+  - Result: 4 passed after e2e database/dependency/readiness isolation changes.
+
+Verification:
+
+- `docker compose config`
+  - pass.
+- `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- `docker compose run --rm e2e npm run e2e`
+  - pass; 4 passed.
+- `API_PORT=18000 WEB_PORT=15173 bash scripts/smoke.sh`
+  - pass; alternate ports were used because an unrelated local service owns host port 8000 on this machine.
+- `make test`
+  - pass; backend 39 passed with 1 existing Starlette/httpx deprecation warning, frontend 9 passed.
+- `make test-e2e`
+  - pass; 4 passed.
+- `API_PORT=18000 WEB_PORT=15173 make smoke`
+  - pass; same local host-port conflict workaround.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `git diff --check`
+  - pass after README cleanup and generated-output ignore updates.
+
+Review status:
+
+- Task 10 spec review: compliant after smoke default ports were restored to the plan's `8000`/`5173`, with documented override support for local port conflicts.
+- Task 10 quality re-review: ready to commit/push; previous blockers around host `node_modules`, shared dev DB state, e2e readiness, and smoke flakiness were resolved.
+
+Execution-time adjustments against the literal Task 10 file list:
+
+- Added `web/package.json`, `web/package-lock.json`, `web/vite.config.ts`, and `.gitignore` changes because Playwright needs a package script/dependency, e2e Vite needs an internal API proxy target, and generated Playwright artifacts should not be committed.
+- `scripts/smoke.sh` keeps the planned default host ports `8000` and `5173`, and supports `API_PORT`/`WEB_PORT` overrides for local conflicts.
+- The e2e compose path uses a separate tmpfs-backed Postgres service and resettable demo seed to avoid mutating the normal dev database during browser tests.
 
 ## Verification Snapshot
 
@@ -729,6 +799,28 @@ At that point, the exact Task 2 health test passed in-container.
   - pass.
 - `git diff --check`
   - pass.
+- Task 10 `docker compose config`
+  - pass.
+- Task 10 `docker compose run --rm e2e npm run e2e`
+  - pass; 4 passed.
+- Task 10 `API_PORT=18000 WEB_PORT=15173 bash scripts/smoke.sh`
+  - pass.
+- Task 10 `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
+- Task 10 `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- Task 10 `docker compose run --rm web npm run typecheck`
+  - pass.
+- Task 10 `make test`
+  - pass; backend 39 passed with 1 existing warning, frontend 9 passed.
+- Task 10 `make test-e2e`
+  - pass; 4 passed.
+- Task 10 `API_PORT=18000 WEB_PORT=15173 make smoke`
+  - pass.
+- Task 10 `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- Task 10 `git diff --check`
+  - pass.
 
 ## Environment Notes
 
@@ -783,6 +875,7 @@ Present in the branch now:
 - Vue/Vite frontend shell, auth flow, route guard, and web test tooling from Task 7
 - tree viewer, Vue Flow/Dagre layout, person details panel, and tree selection tests from Task 8
 - moderator editing tools, quick-jump search, relationship form, and moderator UI tests from Task 9
+- Playwright e2e journeys, demo seeding, smoke workflow, e2e compose services, and final docs from Task 10
 
 Diff against the pre-implementation branch point:
 
@@ -792,16 +885,18 @@ Diff against the pre-implementation branch point:
 - Task 7 frontend shell was committed in `d5e4920`.
 - Task 7 review follow-up was committed in `454c4d0`.
 - Task 8 tree viewer was committed in `c9bdaf4`.
+- Task 9 moderator editing tools were committed in `f9e6ab7`.
+- Task 10 e2e/smoke/final-docs changes are staged next for commit.
 
 ## Recommended Next Step
 
-Begin Task 10: end-to-end journeys, smoke coverage, and final docs.
+Commit and push Task 10, then choose the branch integration path: open a PR, merge the worktree branch, or keep it available for further polish.
 
 ## Quick Resume Notes
 
 If resuming in a new dialogue, the next implementation step is:
 
-- Task 10: end-to-end journeys, smoke coverage, and final docs
+- Commit and push Task 10, then decide how to integrate `codex/family-tree-implementation`.
 
 If resuming in the same environment, first check Docker availability:
 
