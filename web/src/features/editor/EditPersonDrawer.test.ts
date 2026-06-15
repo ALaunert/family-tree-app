@@ -95,7 +95,7 @@ describe("moderator editing tools", () => {
 
     await user.type(screen.getByRole("searchbox"), "ada");
 
-    expect(screen.getByRole("option", { name: /ada example/i })).toBeVisible();
-    expect(screen.queryByRole("option", { name: /grace hopper/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ada example/i })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /grace hopper/i })).not.toBeInTheDocument();
   });
 });

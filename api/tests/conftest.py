@@ -55,19 +55,23 @@ def _run_migrations(database_url: str) -> None:
     command.upgrade(alembic_config, "head")
 
 
-def _prepare_test_database() -> None:
+def _configure_test_database_url() -> str:
     database_url = os.environ.get(
         "DATABASE_URL",
         "postgresql+psycopg://family_tree:family_tree@db:5432/family_tree",
     )
     test_database_url = _test_database_url(database_url)
     os.environ["DATABASE_URL"] = test_database_url
-
-    _ensure_test_database(test_database_url)
-    _run_migrations(test_database_url)
+    return test_database_url
 
 
-_prepare_test_database()
+TEST_DATABASE_URL = _configure_test_database_url()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prepare_test_database() -> None:
+    _ensure_test_database(TEST_DATABASE_URL)
+    _run_migrations(TEST_DATABASE_URL)
 
 from app.db.session import SessionLocal
 from app.main import app

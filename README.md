@@ -19,6 +19,9 @@ make up
 The web app runs at http://localhost:5173 and the API runs at
 http://localhost:8000 by default.
 
+Local Compose defaults to non-secure session cookies because the app runs over
+plain HTTP. Set `SESSION_COOKIE_SECURE=true` for HTTPS deployments.
+
 ## Common Commands
 
 Start the database, API, and web app:

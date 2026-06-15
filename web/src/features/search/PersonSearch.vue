@@ -8,13 +8,11 @@
       autocomplete="off"
       placeholder="Find a person"
     />
-    <div v-if="searchText.trim() && filteredPeople.length" class="search-results" role="listbox">
+    <div v-if="searchText.trim() && filteredPeople.length" class="search-results">
       <button
         v-for="person in filteredPeople"
         :key="person.id"
         type="button"
-        role="option"
-        :aria-selected="false"
         @click="$emit('select-person', person.id)"
       >
         {{ person.fullName }}
