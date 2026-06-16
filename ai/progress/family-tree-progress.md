@@ -1,0 +1,908 @@
+# Family Tree App Progress
+
+Date: 2026-06-15
+Branch: `codex/family-tree-implementation`
+Worktree: `/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation`
+Primary plan: [2026-03-21-family-tree-app-implementation-plan.md](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/ai/plans/2026-03-21-family-tree-app-implementation-plan.md)
+Supporting design: [2026-03-20-family-tree-app-design.md](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/ai/specs/2026-03-20-family-tree-app-design.md)
+
+## Summary
+
+Implementation is through Task 10.
+
+- Task 1 is complete.
+- Task 2 is complete.
+- Task 3 is complete.
+- Task 4 is complete.
+- Task 5 is complete.
+- Task 6 is complete.
+- Task 7 is complete.
+- Task 8 is complete.
+- Task 9 is complete.
+- Task 10 is complete locally and pending commit/push.
+
+The plan document remains the source of truth for intended scope, but its checkbox list has not been updated during execution. Use this progress file plus git history for actual state.
+
+## Plan vs Actual
+
+### Task 1: Bootstrap Repository Tooling
+
+Status: complete
+
+Implemented:
+
+- [/.gitignore](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/.gitignore)
+- [/.env.example](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/.env.example)
+- [/compose.yml](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/compose.yml)
+- [/Makefile](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/Makefile)
+- [/README.md](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/README.md)
+- [/api/Dockerfile](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/Dockerfile)
+- [/web/Dockerfile](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/web/Dockerfile)
+- [/scripts/smoke.sh](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/scripts/smoke.sh)
+
+Completed work:
+
+- Root bootstrap files were created.
+- The smoke script from the plan exists unchanged.
+- The GitHub remote already pointed at the expected repository and did not need to be created.
+
+Execution-time adjustments against the literal Task 1 skeleton:
+
+- `compose.yml` includes minimal Postgres environment wiring on `db` so the container can start.
+- `Makefile` `setup` preserves an existing `.env` without masking real copy failures.
+- `.gitignore` was expanded beyond the initial `.worktrees/` entry to cover Python and Node artifacts.
+
+Task 1 completion commits:
+
+- `49d697b` `chore: bootstrap repo tooling`
+- `46690aa` `fix: trim compose bootstrap skeleton`
+- `b0cb4f1` `fix: wire db env defaults for bootstrap`
+
+### Task 2: Backend App Skeleton and Health Endpoint
+
+Status: complete
+
+Implemented:
+
+- [/api/pyproject.toml](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/pyproject.toml)
+- [/api/app/__init__.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/app/__init__.py)
+- [/api/app/main.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/app/main.py)
+- [/api/app/core/config.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/app/core/config.py)
+- [/api/app/api/__init__.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/app/api/__init__.py)
+- [/api/app/api/router.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/app/api/router.py)
+- [/api/app/api/routes/health.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/app/api/routes/health.py)
+- [/api/tests/conftest.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/tests/conftest.py)
+- [/api/tests/test_health.py](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/api/tests/test_health.py)
+- [/compose.yml](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/compose.yml)
+- [/Makefile](/Users/launert/projects/family-tree-app/.worktrees/family-tree-implementation/Makefile)
+
+Completed work:
+
+- FastAPI app bootstrap exists.
+- `/api/v1/health` returns `{"status": "ok"}`.
+- The exact health test shape from the plan is present in `api/tests/test_health.py`.
+- `compose.yml` runs the API with the planned `uvicorn` command, port mapping, working directory, and bind mount.
+- `Makefile` `test-api` runs `docker compose run --rm api pytest -q`.
+
+Execution-time adjustments against the literal Task 2 file list:
+
+- `api/Dockerfile` had to be expanded beyond the Task 1 placeholder so the compose-based test flow could actually run.
+- The final backend image:
+  - installs dependencies from `pyproject.toml`
+  - copies `app/` and `tests/`
+  - sets `PYTHONPATH=/app`
+  - uses a `uvicorn` `CMD`
+- `api/tests/conftest.py` is present because the task required the file, but it currently only contains a docstring and no shared fixtures.
+
+Why those adjustments were needed:
+
+- The original placeholder backend image could not run `pytest`.
+- After Docker networking was fixed, the exact plan command still failed under the `pytest` entrypoint until `PYTHONPATH=/app` was added.
+
+Task 2 completion commits:
+
+- `e2596d5` `feat: add backend app skeleton`
+- `d64b30a` `fix: align api image and tests`
+- `95c1f25` `fix: restore health test shape`
+- `b458a8f` `fix: add api pythonpath`
+
+### Task 3: Database Wiring and Initial Schema
+
+Status: complete
+
+Planned scope:
+
+- SQLAlchemy session and model layer
+- Alembic configuration and initial migration
+- Database constraint tests
+- Postgres healthcheck and persistent volume
+- Real `make migrate`
+
+Completed work:
+
+- Added the failing-first schema constraint tests for unique user emails and rejected self-link relationships.
+- Added SQLAlchemy 2.0 database session wiring.
+- Added initial models for users, auth sessions, people, and relationships.
+- Added Alembic configuration and the initial schema migration.
+- Added Postgres healthcheck and persistent `postgres-data` compose volume.
+- Replaced the placeholder `make migrate` target with `docker compose run --rm api alembic upgrade head`.
+- Review follow-up corrected the user schema to require `password_hash` and removed the unplanned required `display_name`.
+- Review follow-up added database check constraints for `users.role` and `relationships.relationship_type`.
+- Review follow-up made timestamps consistent with `created_at` and `updated_at` on `users`, `auth_sessions`, `people`, and `relationships`.
+- Review follow-up added database constraint coverage for duplicate relationship pairs.
+- Review follow-up added `20260321_0002_review_schema_constraints.py` so existing local DBs at `20260321_0001` can be reconciled without deleting the normal compose volume.
+- Re-review follow-up made API tests use a dedicated `_test` database derived from `DATABASE_URL` before app DB settings import.
+- Re-review follow-up added a guard to the destructive schema-test cleanup fixture so it refuses to delete rows unless the active database name ends with `_test`.
+- Re-review follow-up made the `20260321_0002` downgrade a documented no-op so downgrading to the checked-in `20260321_0001` schema does not remove clean-schema columns or constraints.
+- Re-review follow-up added Alembic `path_separator = os` to avoid the config deprecation warning surfaced by running migrations from tests.
+
+Current TDD status:
+
+- Original red verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: expected failure, exit 2 during test collection because `sqlalchemy` is not installed yet.
+- Original green verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: 2 passed.
+- Review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: expected failure, 5 failed and 2 passed. Failures covered missing `password_hash`, missing relationship type check constraint, missing `updated_at`, and stale user shape.
+- Review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: 7 passed.
+- Re-review red verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: expected failure, 1 failed and 7 passed. Failure showed active database was `family_tree`, not a `_test` database.
+- Re-review downgrade reproduction complete:
+  - `docker compose -p family-tree-downgrade-red run --rm api alembic upgrade head`
+  - `docker compose -p family-tree-downgrade-red run --rm api alembic downgrade 20260321_0001`
+  - Result: unsafe old downgrade removed `password_hash` and `updated_at`, re-added `display_name`, and removed enum check constraints.
+- Re-review green verification complete:
+  - `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - Result: 8 passed.
+
+Verification:
+
+- `docker compose build api`
+  - pass
+- `docker compose up -d db`
+  - pass
+- `docker compose run --rm api alembic upgrade head`
+  - pass
+- `docker compose exec db psql -U family_tree -d family_tree -c '\dt'`
+  - pass; confirmed `users`, `auth_sessions`, `people`, and `relationships` tables exist.
+- `make migrate`
+  - pass; Alembic no-op after the initial migration had already been applied.
+- `docker compose run --rm api pytest -q`
+  - pass; 3 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api alembic upgrade head`
+  - pass; applied `20260321_0002`.
+- Review follow-up `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - pass; 7 passed.
+- Review follow-up `docker compose build api`
+  - pass.
+- Review follow-up `docker compose run --rm api pytest -q`
+  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up fresh migration verification:
+  - `docker compose -p family-tree-task3-verify up -d db`
+  - `docker compose -p family-tree-task3-verify run --rm api alembic upgrade head`
+  - `docker compose -p family-tree-task3-verify exec db psql ...`
+  - Result: both revisions applied from scratch; confirmed all four app tables, required `password_hash`, no `display_name`, non-null timestamps, role/type check constraints, and relationship/user unique constraints.
+  - Cleanup: `docker compose -p family-tree-task3-verify down -v --remove-orphans` removed only the temporary project resources.
+- Re-review `docker compose build api`
+  - pass.
+- Re-review `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - pass; 8 passed.
+- Re-review `docker compose run --rm api pytest -q`
+  - pass; 9 passed, 1 existing Starlette/httpx deprecation warning.
+- Re-review isolated downgrade verification:
+  - `docker compose -p family-tree-downgrade-final up -d db`
+  - `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
+  - `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`
+  - Result: after downgrade, clean schema remained intact: app tables exist, `password_hash` remains, `display_name` remains absent, timestamps remain on all four app tables, and role/type/relationship/user constraints remain.
+  - Cleanup: `docker compose -p family-tree-downgrade-final down -v --remove-orphans` removed only the temporary project resources.
+
+Note:
+
+- Necessary plan deviation: added `alembic`, `SQLAlchemy>=2.0`, and `psycopg[binary]` to `api/pyproject.toml`, which was not listed in the Task 3 file list but was required for the database layer and migrations.
+- Environment note: after some successful Docker runs, sandboxed Docker access began returning permission errors for `/Users/launert/.docker/run/docker.sock`. Docker worked with escalated access, so final Docker-based verification was completed that way without repo code changes.
+- Review follow-up migration approach: kept the original revision history and added a second idempotent reconciliation revision. The initial revision now also reflects the corrected schema, so fresh databases get the reviewed shape immediately; the second revision no-ops when it is already true.
+- Re-review migration downgrade decision: `20260321_0002` downgrade is intentionally a no-op because checked-in `20260321_0001` already defines the clean schema. Reversing `0002` should only move Alembic's version marker, not mutate the database back to the pre-review shape.
+- Re-review test database decision: pytest derives the test database name by appending `_test` to the configured database name and creates/migrates it automatically through the Postgres admin database. This keeps test cleanup away from non-test data while preserving the normal compose database.
+
+### Task 4: Implement Session Auth and Owner Bootstrapping
+
+Status: complete
+
+Planned scope:
+
+- Session authentication with server-stored `auth_sessions` rows and an HTTP-only `family_tree_session` cookie.
+- Password hashing with Argon2 through `pwdlib[argon2]`.
+- Auth routes for login, logout, and current-user lookup.
+- Owner bootstrap and invited-user CLI scripts.
+- Make targets and README updates.
+
+Completed work:
+
+- Added failing-first auth tests for login cookie creation, unauthenticated `/me`, authenticated `/me`, and logout cookie/session cleanup.
+- Added password hashing and verification helpers in `api/app/core/security.py`.
+- Added DB and current-user dependencies in `api/app/api/deps.py`.
+- Added auth request/response schemas in `api/app/schemas/auth.py`.
+- Added auth service functions for login verification, session creation, session lookup, session deletion, user creation, and idempotent owner creation.
+- Added `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, and `GET /api/v1/auth/me`.
+- Added owner and user creation scripts under `api/scripts/`.
+- Replaced placeholder `seed-owner` and `create-user` Make targets.
+- Updated README with owner bootstrap and CLI user creation instructions.
+- Wired `SESSION_TTL_HOURS`, `OWNER_EMAIL`, and `OWNER_PASSWORD` into the API container environment so the required compose-run owner smoke command works.
+- Spec-review follow-up made owner bootstrap promote an existing same-email user to `owner`.
+- Code-review follow-up made owner bootstrap reset the password hash from `OWNER_PASSWORD` when ensuring an existing owner email.
+- Code-review follow-up added `SESSION_COOKIE_SECURE` and marks auth cookies as `Secure` by default.
+- Code-review follow-up invalidates existing sessions when owner bootstrap resets an existing account password.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 4 failed. All failures were 404s because auth routes were not implemented yet.
+- First green attempt:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: failed during import because the existing API image did not yet include newly declared `pwdlib`.
+  - Follow-up: `docker compose build api` installed the new dependency.
+- Second green attempt:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: failed during import because `EmailStr` required the optional `email-validator` package.
+  - Follow-up: auth schemas were simplified to plain `str` emails to avoid an unneeded extra dependency.
+- Third green attempt:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 1 failed and 3 passed. Logout returned a response with no status code.
+  - Follow-up: logout now explicitly sets HTTP 204 before returning the injected response.
+- Final green verification:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 4 passed, 1 existing Starlette/httpx deprecation warning.
+- Spec-review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 1 failed and 4 passed. Existing same-email viewer was not promoted to `owner`.
+- Spec-review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Code-review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 2 failed and 3 passed. Session cookie lacked `Secure`, and owner promotion did not reset the password hash.
+- Code-review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Session-invalidation follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: expected failure, 1 failed and 4 passed. Existing owner session remained valid after password reset.
+- Session-invalidation follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - Result: 5 passed, 1 existing Starlette/httpx deprecation warning.
+
+Verification:
+
+- `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 4 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api python scripts/seed_owner.py`
+  - pass; printed `Owner user ready: owner@example.com`.
+- `docker compose run --rm api python scripts/seed_owner.py`
+  - pass on second run; printed `Owner user ready: owner@example.com`.
+- `docker compose exec db psql -U family_tree -d family_tree -tAc "SELECT count(*) FROM users WHERE email = 'owner@example.com' AND role = 'owner';"`
+  - pass; returned `1`.
+- `docker compose run --rm api pytest -q`
+  - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose build api`
+  - pass.
+- Spec-review follow-up `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Spec-review follow-up `docker compose run --rm api pytest -q`
+  - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
+- Code-review follow-up `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Code-review follow-up `docker compose run --rm api pytest -q`
+  - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
+- Verification note: DB-mutating pytest commands must not be run in parallel against the shared `_test` database. A parallel auth-suite/full-suite run raced on cleanup and produced transient integrity errors; rerunning the auth suite alone passed.
+- Session-invalidation follow-up `docker compose run --rm api pytest tests/auth/test_login.py -q`
+  - pass; 5 passed, 1 existing Starlette/httpx deprecation warning.
+- Session-invalidation follow-up `docker compose run --rm api pytest -q`
+  - pass; 14 passed, 1 existing Starlette/httpx deprecation warning.
+
+Execution-time adjustments against the literal Task 4 file list:
+
+- Added `pwdlib[argon2]` to `api/pyproject.toml`; this was required by the task but not listed in the Task 4 file list.
+- Added `session_ttl_hours` to `api/app/core/config.py`; this keeps the existing `SESSION_TTL_HOURS` setting wired into the auth session lifetime.
+- Modified `compose.yml` to pass `SESSION_TTL_HOURS`, `OWNER_EMAIL`, and `OWNER_PASSWORD` into the API container. This was required for the exact owner smoke command to pass using the repo's existing `.env.example` defaults.
+- Used plain `str` email fields in auth schemas instead of Pydantic `EmailStr` to avoid adding an unrelated optional validation dependency for this task.
+- Added `SESSION_COOKIE_SECURE` to `.env.example`, `compose.yml`, and API settings as a security-hardening follow-up from code review. The default is `true`.
+- Updated the API test client to use an HTTPS base URL so secure cookies are sent during authenticated route tests.
+- Avoid running DB-mutating API pytest commands in parallel unless they use isolated database names.
+
+### Task 5: Implement People CRUD and Role Checks
+
+Status: complete
+
+Planned scope:
+
+- Person create/update/read schemas with camelCase JSON aliases.
+- Person service layer for list, get, create, and update.
+- People API routes for:
+  - `GET /api/v1/people`
+  - `GET /api/v1/people/{person_id}`
+  - `POST /api/v1/people`
+  - `PATCH /api/v1/people/{person_id}`
+- Role checks so viewers can read, while moderators and owners can write.
+- People API tests written before implementation.
+
+Completed work:
+
+- Added failing-first people API tests in `api/tests/people/test_people_api.py`.
+- Added authenticated viewer, moderator, and owner test clients that log in through the real auth endpoint.
+- Added `api/app/schemas/person.py` with Pydantic aliases for `fullName`, `birthDate`, and `deathDate`, plus blank-name validation.
+- Added `api/app/services/person_service.py` for SQLAlchemy-backed people operations.
+- Added `api/app/api/routes/people.py` with authenticated read routes and moderator/owner write checks.
+- Included the people router from `api/app/api/router.py`.
+- Review follow-up added explicit auth-edge tests for unauthenticated reads, viewer write denial, and owner updates.
+- Review follow-up added API validation for null and overlong `fullName` values so invalid requests return 422 instead of database errors.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: expected failure, 7 failed. All failures were `404 Not Found` because people routes were not implemented yet.
+- Green verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: 7 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: expected failure, 2 failed and 10 passed. Explicit null and overlong `fullName` values reached database constraints instead of returning 422.
+- Review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - Result: 12 passed, 1 existing Starlette/httpx deprecation warning.
+
+Verification:
+
+- `docker compose build api`
+  - pass.
+- `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - pass; 7 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest -q`
+  - pass; 21 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - pass; 12 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest -q`
+  - pass; 26 passed, 1 existing Starlette/httpx deprecation warning.
+
+Execution-time adjustments against the literal Task 5 file list:
+
+- Added a viewer get-person test to cover `GET /api/v1/people/{person_id}` from the planned route list.
+- Added an owner create test to verify owners share moderator write permissions.
+- Added unauthenticated list, viewer update denial, and owner update tests during review follow-up.
+- Added a `fullName` API max length matching the database column and rejected explicit null `fullName` updates.
+
+### Task 6: Relationship Rules and Tree Payload
+
+Status: complete
+
+Planned scope:
+
+- Relationship create/read schemas with camelCase JSON aliases.
+- Tree response schema with `viewerRole`, `people`, and `relationships`.
+- Relationship service rules for canonical partner pairs, duplicate rejection, two-parent limit, and ancestry-cycle rejection.
+- Tree service that returns the authenticated viewer role plus all people and relationships.
+- Relationship routes for:
+  - `POST /api/v1/relationships`
+  - `DELETE /api/v1/relationships/{relationship_id}`
+- Tree route for:
+  - `GET /api/v1/tree`
+- Role checks so viewers can read the tree, while moderators and owners can write relationships.
+- Relationship and tree API tests written before implementation.
+
+Completed work:
+
+- Added failing-first relationship rule tests in `api/tests/relationships/test_relationship_rules.py`.
+- Added failing-first tree payload tests in `api/tests/tree/test_tree_api.py`.
+- Added `api/app/schemas/relationship.py` and `api/app/schemas/tree.py`.
+- Added `api/app/services/relationship_service.py` with partner canonicalization, duplicate checks, max-two-parent enforcement, and DFS cycle detection before parent-child insert.
+- Added `api/app/services/tree_service.py` to assemble the tree payload.
+- Added `api/app/api/routes/relationships.py` and `api/app/api/routes/tree.py`.
+- Included the relationship and tree routers from `api/app/api/router.py`.
+- Review follow-up changed tree relationship entries to use the documented `type` key while keeping relationship write schemas on `relationshipType`.
+- Review follow-up serializes relationship writes with a table lock before rule checks and insert.
+- Review follow-up maps relationship `IntegrityError` failures to API-level `404` or `409` responses instead of unhandled 500s.
+- Review follow-up added auth and validation edge coverage for unauthenticated relationship creates, viewer deletes, missing people, self-links, and integrity conflicts.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: expected failure, 8 failed. All failures were `404 Not Found` because relationship and tree routes were not implemented yet.
+- Green verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: 8 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up red verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: expected failure, 2 failed and 11 passed. The tree payload returned `relationshipType` instead of `type`, and DB integrity mapping had no service seam yet.
+- Review follow-up green verification complete:
+  - `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - Result: 13 passed, 1 existing Starlette/httpx deprecation warning.
+
+Verification:
+
+- `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - pass; 8 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest -q`
+  - pass; 34 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
+- Review follow-up `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
+
+Execution-time adjustments against the literal Task 6 file list:
+
+- No database migration was added because the `relationships` table, enum values, foreign keys, self-link check, and unique pair constraint already existed from Task 3.
+- Relationship rule violations currently return `409 Conflict`; missing people or relationships return `404 Not Found`.
+- `GET /api/v1/tree` relationship entries use `type` per the plan's documented tree DTO; standalone relationship route responses use `relationshipType`.
+- Relationship writes lock the `relationships` table in `SHARE ROW EXCLUSIVE` mode to serialize invariant checks and inserts.
+
+### Task 7: Vue Frontend and Auth Flow
+
+Status: complete
+
+Planned scope:
+
+- Vue 3 + TypeScript + Vite app shell.
+- Vite proxy for `/api` to `http://api:8000`.
+- `/login` and `/tree` routes.
+- Session bootstrap through `GET /api/v1/auth/me`.
+- Route guard redirecting unauthenticated users to `/login`.
+- `fetchJson` with `credentials: "include"`.
+- Login form posting credentials to `/api/v1/auth/login` and redirecting to `/tree` on success.
+
+Completed work:
+
+- Added the frontend package, TypeScript, Vite, Vitest, Vue Testing Library, and lockfile.
+- Added the Vue app entry point, router, basic app shell, and placeholder tree page for Task 8.
+- Added session bootstrap and shared `fetchJson` helper.
+- Added login page with email/password form, API submission, basic error state, and successful redirect.
+- Added Vitest setup and a small render helper for future frontend tests.
+- Wired `compose.yml` so the web service bind-mounts frontend source/config while preserving image-installed dependencies from `npm ci`.
+- Replaced the placeholder `make test-web` target with the frontend Vitest command.
+- Updated the web Dockerfile to install dependencies with `npm ci` and run Vite by default.
+- Review follow-up preserves guarded redirect targets after login.
+- Review follow-up forces protected-route session revalidation and resets module session state between tests.
+- Review follow-up removed the named `web-node-modules` volume to avoid dependency drift from `package-lock.json`.
+
+Current TDD status:
+
+- Red verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: expected failure, exit 254. `npm` could not find `/app/package.json` because the frontend app/test runner had not been bootstrapped yet.
+- First green attempt:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: failed before tests because `docker compose run web` tried to start the API via `depends_on`, and host port `8000` was already allocated.
+  - Follow-up: removed the web service's unnecessary `depends_on`; the unit test mocks `fetch` and does not need the API container.
+- Second green attempt:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: failed with `sh: vitest: not found` because the named `node_modules` volume had not been populated after adding `package.json`.
+  - Follow-up: ran `docker compose run --rm web npm install` to install dependencies and generate `package-lock.json`.
+- Green verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - Result: 1 test passed.
+- Review follow-up red verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts src/app/session.test.ts`
+  - Result: expected failure, 2 failed and 1 passed. Login ignored `?redirect=...`, and forced session refresh still returned the cached user.
+- Review follow-up green verification complete:
+  - `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts src/app/session.test.ts`
+  - Result: 3 passed.
+
+Verification:
+
+- `docker compose run --rm web npm run test -- --run src/features/auth/LoginPage.test.ts`
+  - pass; 1 test passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 1 test passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities after targeted Vite/Vitest toolchain updates.
+- `docker compose build web`
+  - pass; `npm ci` found 0 vulnerabilities.
+- Review follow-up `docker compose run --rm web npm run test -- --run`
+  - pass; 3 passed.
+- Review follow-up `docker compose run --rm web npm run typecheck`
+  - pass.
+- Review follow-up `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- Review follow-up `docker compose build web`
+  - pass.
+
+Execution-time adjustments against the literal Task 7 file list:
+
+- Added `web/package-lock.json` so container dependency installs are reproducible.
+- Modified `web/Dockerfile`, which was not in the literal Task 7 modify list, because the existing placeholder image did not install dependencies or start Vite.
+- Added `@testing-library/jest-dom`, `@types/node`, and `type-fest` dev dependencies. `jest-dom` supports the test setup import, `@types/node` supports Vite config typing, and `type-fest` fills a missing declaration import from `@testing-library/vue`.
+- Set `skipLibCheck` in `web/tsconfig.json` because the compatible `type-fest` declarations otherwise trigger TypeScript recursion errors inside third-party `.d.ts` files.
+- Initial frontend toolchain versions reported 6 dependency audit vulnerabilities through the Vite/esbuild chain. Targeted updates to current Vite, Vitest, Vue plugin, and `vue-tsc` resolved the audit before commit.
+- Compose now bind-mounts only frontend source/config files into the web container; package changes require rebuilding the web image so `node_modules` stays aligned with the committed lockfile.
+
+### Task 8: Tree Viewer and Person Details Panel
+
+Status: complete
+
+Planned scope:
+
+- Frontend tree DTO types and API client.
+- Family graph construction with synthetic `family-unit` nodes.
+- Dagre layout for Vue Flow nodes.
+- Tree page that loads `/api/v1/tree`.
+- Vue Flow canvas with person nodes, controls, and background.
+- Person details panel with dates, notes, partners, parents, and children.
+- Route `/tree` using the real tree page.
+
+Completed work:
+
+- Added tree DTO and graph types in `web/src/features/tree/types.ts`.
+- Added `fetchTree()` for `/api/v1/tree`.
+- Added `buildFamilyGraph()` to create person nodes, synthetic family-unit nodes, parent-to-family edges, and family-to-child edges.
+- Added `applyDagreLayout()` for top-to-bottom graph positioning.
+- Added `FamilyTreeCanvas.vue` using `@vue-flow/core`, `@vue-flow/background`, `@vue-flow/controls`, and custom person/family-unit node rendering.
+- Added `PersonNode.vue` with selectable person cards and life-date display.
+- Replaced the placeholder tree page with a loading/error/tree workspace that opens person details on selection.
+- Added `PersonDetailsPanel.vue` with full name, birth/death dates, notes, partner context, parent context, and child context.
+- Updated the router so `/tree` uses the real tree page.
+- Added Vue Flow and Dagre dependencies plus lockfile updates.
+- Added jsdom dimension shims and Vue Flow stylesheet imports for frontend test stability.
+- Spec-review follow-up fixed multiple non-partner parents so each unpaired parent gets a single-parent family-unit link to the child.
+- Code-review follow-up added graph assertions for parent-to-family edges and a focused details-panel test for partner, parent, and child context.
+
+Current TDD status:
+
+- Red verification was performed by the Task 8 implementer subagent:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - Result: expected failure because the tree graph builder and tree page did not exist yet.
+- Green verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - Result: 2 passed.
+- Spec-review follow-up red verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts`
+  - Result: expected failure, 1 failed and 1 passed. The failing case showed that only the first non-partner parent received a single-parent family-unit link.
+- Spec-review follow-up green verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts`
+  - Result: 2 passed.
+- Debugging follow-up:
+  - `docker compose run --rm web npm run typecheck`
+  - Result: initially failed on Vue Flow `Node` generic order and `CustomEvent` type-shape usage in `web/src/features/tree/types.ts`.
+  - Root cause: Vue Flow's `Node` generic order is `Node<Data, CustomEvents, Type>`, and its `CustomEvent` is a callback signature rather than the browser `CustomEvent`.
+  - Fix: the family graph node alias now supplies the node type as the third generic and uses a callback-shaped custom-event map.
+- Code-review follow-up verification:
+  - `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/person/PersonDetailsPanel.test.ts`
+  - Result: 3 passed.
+
+Verification:
+
+- `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - pass; 3 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 7 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+
+Execution-time adjustments against the literal Task 8 file list:
+
+- Added `web/package-lock.json` changes because new frontend dependencies must remain reproducible.
+- Modified `web/src/styles/index.css` to load Vue Flow styles globally.
+- Modified `web/src/test/setup.ts` to provide jsdom element dimensions used by graph-related tests.
+- The `TreePage` unit test stubs `FamilyTreeCanvas` so it verifies the page-level selection/details behavior without coupling that test to Vue Flow's jsdom layout internals. The production canvas component still renders `<VueFlow />`, `<Controls />`, and `<Background />`.
+
+### Task 9: Moderator Editing and Quick-Jump Search
+
+Status: complete
+
+Planned scope:
+
+- Quick-jump person search against the already-loaded tree people.
+- Moderator-only controls on the tree-first interface.
+- Person create/update drawer.
+- Relationship form for adding partner and parent-child links and removing existing relationships.
+- Frontend write API wrappers for existing moderator/owner backend endpoints.
+- Tree refetch after successful editor writes.
+
+Completed work:
+
+- Added `PersonSearch.vue` with local search state and computed filtering over loaded people, with no debounce.
+- Added `moderatorApi.ts` wrappers for person create/update and relationship create/delete writes.
+- Added `EditPersonDrawer.vue` for add/edit person flows.
+- Added `RelationshipForm.vue` for partner, parent, child, and remove relationship flows.
+- Updated `TreePage.vue` with quick-jump search, moderator-only Add person controls, editor orchestration, and tree refetch after saves.
+- Updated `PersonDetailsPanel.vue` with a moderator-only Edit person action.
+- Added `EditPersonDrawer.test.ts` covering moderator control visibility and quick-jump filtering.
+- Code-review follow-up changed `createRelationship()` to return `Promise<void>` because standalone relationship writes return `relationshipType`, while tree relationship DTOs use `type`.
+- Code-review follow-up tightened the quick-jump test so non-matching people are absent after filtering.
+
+Current TDD status:
+
+- Red verification was performed by the Task 9 implementer subagent:
+  - `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - Result: expected failure because `../search/PersonSearch.vue` did not exist yet.
+- Green verification:
+  - `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - Result: 2 passed.
+- Code-review follow-up verification:
+  - `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - Result: 2 passed after the API contract and search assertion fixes.
+
+Verification:
+
+- `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - pass; 2 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+- `git diff --check`
+  - pass.
+
+Execution-time adjustments against the literal Task 9 file list:
+
+- No new dependency was needed.
+- The quick-jump search uses Vue Options API `data()` plus a computed filtered list, matching the existing frontend component style while preserving the plan's reactive-state/computed-list intent.
+- `RelationshipForm.vue` leaves deeper invalid-choice filtering to backend validation for v1. The code reviewer noted that pre-filtering obvious duplicates or full parent slots would improve moderator UX later, but server-side relationship rules remain authoritative.
+
+### Task 10: End-to-End Journeys, Smoke Coverage, and Final Docs
+
+Status: complete locally, pending commit and push
+
+Planned scope:
+
+- Playwright config and e2e specs for login redirect, empty tree render, person details, and moderator editing.
+- Demo data seeding.
+- Runtime smoke script covering service startup, migrations, owner seed, demo seed, and API health.
+- Compose e2e service using the official Playwright image pinned to the `@playwright/test` version.
+- Makefile targets for e2e and smoke.
+- README workflow documentation.
+
+Completed local work:
+
+- Added `web/playwright.config.ts`.
+- Added `web/e2e/login.spec.ts`, `web/e2e/tree-viewer.spec.ts`, and `web/e2e/moderator.spec.ts`.
+- Added idempotent `api/scripts/seed_demo_data.py`.
+- Added `@playwright/test` and `npm run e2e`.
+- Added `e2e-api`, `e2e-web`, `e2e-setup`, and `e2e` compose services.
+- Replaced the placeholder `make test-e2e` target with `docker compose run --rm e2e npm run e2e`.
+- Updated `scripts/smoke.sh` to start services, run migrations, seed owner/demo data, and check API health.
+- Updated README with setup, command, verification, and demo-user documentation.
+- Added Playwright generated-output ignores to `.gitignore`.
+- Quality-review follow-up isolated e2e from the normal dev database by adding a tmpfs-backed `e2e-db` service.
+- Quality-review follow-up made the e2e Playwright service install dependencies into a named container volume instead of relying on host `web/node_modules`.
+- Quality-review follow-up added API health readiness checks before e2e web/tests run.
+- Quality-review follow-up made e2e setup reset only the isolated e2e database before seeding demo data.
+- Quality-review follow-up added retry polling to the smoke health check.
+
+Current TDD status:
+
+- Red verification was performed by the Task 10 implementer subagent:
+  - `docker compose run --rm e2e npm run e2e`
+  - Result: expected failure, `no such service: e2e`.
+- Green verification:
+  - `docker compose run --rm e2e npm run e2e`
+  - Result: 4 passed.
+- Quality-review follow-up green verification:
+  - `docker compose run --rm e2e npm run e2e`
+  - Result: 4 passed after e2e database/dependency/readiness isolation changes.
+
+Verification:
+
+- `docker compose config`
+  - pass.
+- `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- `docker compose run --rm e2e npm run e2e`
+  - pass; 4 passed.
+- `API_PORT=18000 WEB_PORT=15173 bash scripts/smoke.sh`
+  - pass; alternate ports were used because an unrelated local service owns host port 8000 on this machine.
+- `make test`
+  - pass; backend 39 passed with 1 existing Starlette/httpx deprecation warning, frontend 9 passed.
+- `make test-e2e`
+  - pass; 4 passed.
+- `API_PORT=18000 WEB_PORT=15173 make smoke`
+  - pass; same local host-port conflict workaround.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `git diff --check`
+  - pass after README cleanup and generated-output ignore updates.
+
+Review status:
+
+- Task 10 spec review: compliant after smoke default ports were restored to the plan's `8000`/`5173`, with documented override support for local port conflicts.
+- Task 10 quality re-review: ready to commit/push; previous blockers around host `node_modules`, shared dev DB state, e2e readiness, and smoke flakiness were resolved.
+
+Execution-time adjustments against the literal Task 10 file list:
+
+- Added `web/package.json`, `web/package-lock.json`, `web/vite.config.ts`, and `.gitignore` changes because Playwright needs a package script/dependency, e2e Vite needs an internal API proxy target, and generated Playwright artifacts should not be committed.
+- `scripts/smoke.sh` keeps the planned default host ports `8000` and `5173`, and supports `API_PORT`/`WEB_PORT` overrides for local conflicts.
+- The e2e compose path uses a separate tmpfs-backed Postgres service and resettable demo seed to avoid mutating the normal dev database during browser tests.
+
+## Verification Snapshot
+
+### Verified in prior execution
+
+These checks were successfully run after Task 2 was fixed:
+
+- `docker compose build api`
+- `docker compose run --rm api pytest tests/test_health.py -q`
+- `make test-api`
+
+At that point, the exact Task 2 health test passed in-container.
+
+### Verified in the current session
+
+- `docker compose build api`
+  - pass.
+- `docker compose run --rm api pytest tests/people/test_people_api.py -q`
+  - pass; 12 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest tests/db/test_schema_constraints.py -q`
+  - pass; 8 passed.
+- `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose run --rm api pytest tests/relationships/test_relationship_rules.py tests/tree/test_tree_api.py -q`
+  - pass; 13 passed, 1 existing Starlette/httpx deprecation warning.
+- `docker compose -p family-tree-downgrade-final run --rm api alembic upgrade head`
+  - pass; applied `20260321_0001` and `20260321_0002` from scratch in a temporary project.
+- `docker compose -p family-tree-downgrade-final run --rm api alembic downgrade 20260321_0001`
+  - pass; no-op downgrade preserved the clean schema.
+- Isolated downgrade DB catalog checks:
+  - pass; confirmed `users`, `auth_sessions`, `people`, and `relationships`.
+  - pass; confirmed `users.password_hash` is non-null and `users.display_name` is absent.
+  - pass; confirmed `created_at` and `updated_at` are non-null on all four app tables.
+  - pass; confirmed `ck_users_role_valid`, `ck_relationship_type_valid`, `ck_relationship_not_self`, `uq_relationship_pair`, and `uq_users_email`.
+- `docker compose -p family-tree-downgrade-final down -v --remove-orphans`
+  - pass; removed only the temporary project resources.
+- `docker compose run --rm web npm run test -- --run src/features/tree/layout/buildFamilyGraph.test.ts src/features/tree/TreePage.test.ts`
+  - pass; 3 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 7 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+- Task 9 preflight `docker context show`
+  - pass; context was `desktop-linux`.
+- Task 9 preflight `ls -la ~/.docker/run`
+  - pass; `docker.sock` was present.
+- Task 9 preflight `docker compose run --rm api pytest tests/test_health.py -q`
+  - pass; 1 passed, 1 existing Starlette/httpx deprecation warning.
+- Task 9 preflight `docker compose build api`
+  - first attempt failed with a Docker Hub TLS handshake timeout while fetching the `python:3.12-slim` metadata token.
+  - pass on retry; root cause was a transient external registry/network timeout, not repo code.
+- `docker compose run --rm web npm run test -- --run src/features/editor/EditPersonDrawer.test.ts`
+  - pass; 2 passed.
+- `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- `docker compose run --rm web npm run typecheck`
+  - pass.
+- `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- `docker compose build web`
+  - pass.
+- `git diff --check`
+  - pass.
+- Task 10 `docker compose config`
+  - pass.
+- Task 10 `docker compose run --rm e2e npm run e2e`
+  - pass; 4 passed.
+- Task 10 `API_PORT=18000 WEB_PORT=15173 bash scripts/smoke.sh`
+  - pass.
+- Task 10 `docker compose run --rm api pytest -q`
+  - pass; 39 passed, 1 existing Starlette/httpx deprecation warning.
+- Task 10 `docker compose run --rm web npm run test -- --run`
+  - pass; 9 passed.
+- Task 10 `docker compose run --rm web npm run typecheck`
+  - pass.
+- Task 10 `make test`
+  - pass; backend 39 passed with 1 existing warning, frontend 9 passed.
+- Task 10 `make test-e2e`
+  - pass; 4 passed.
+- Task 10 `API_PORT=18000 WEB_PORT=15173 make smoke`
+  - pass.
+- Task 10 `docker compose run --rm web npm audit --audit-level=moderate`
+  - pass; found 0 vulnerabilities.
+- Task 10 `git diff --check`
+  - pass.
+
+## Environment Notes
+
+Two environment issues came up during execution:
+
+### 1. Docker Desktop DNS issue
+
+Observed during Task 2 work:
+
+- Host network could resolve PyPI.
+- Plain Docker containers could not resolve `pypi.org`.
+- Containers only worked when explicitly given public DNS.
+
+The engine daemon DNS was changed during execution to:
+
+```json
+["1.1.1.1", "8.8.8.8"]
+```
+
+This was a Docker Desktop environment fix, not a repo change.
+
+### 2. Docker socket sandbox issue
+
+Current session state:
+
+- Docker context is `desktop-linux`
+- `~/.docker/run/docker.sock` exists
+- sandboxed Docker commands began returning permission errors partway through Task 3
+- escalated Docker access worked and confirmed the project database container was healthy
+
+This appears to be a sandbox permission issue, not a repo code issue.
+
+### 3. Docker Hub transient TLS timeout
+
+Observed during Task 9 preflight:
+
+- `docker compose build api` initially failed while fetching an anonymous Docker Hub token for `python:3.12-slim`.
+- Docker itself was healthy, `docker version` worked, the DB service was healthy, and the health test passed using the existing API image.
+- The same build command passed on retry.
+
+This was treated as a transient external registry/network issue and did not require repo code changes.
+
+## Current File Surface vs Plan
+
+Present in the branch now:
+
+- root bootstrap files from Task 1
+- backend skeleton files from Task 2
+- database layer, initial models, Alembic migration plumbing, and schema tests from Task 3
+- session auth, owner bootstrap, invited-user CLI, and auth tests from Task 4
+- people API, relationship rules, and tree payload APIs from Tasks 5-6
+- Vue/Vite frontend shell, auth flow, route guard, and web test tooling from Task 7
+- tree viewer, Vue Flow/Dagre layout, person details panel, and tree selection tests from Task 8
+- moderator editing tools, quick-jump search, relationship form, and moderator UI tests from Task 9
+- Playwright e2e journeys, demo seeding, smoke workflow, e2e compose services, and final docs from Task 10
+
+Diff against the pre-implementation branch point:
+
+- Task 3 database schema was committed in `cf79957`.
+- Review follow-up fixes are recorded in a separate follow-up commit after `cf79957`.
+- Task 4 session auth was committed in `3d80324`.
+- Task 7 frontend shell was committed in `d5e4920`.
+- Task 7 review follow-up was committed in `454c4d0`.
+- Task 8 tree viewer was committed in `c9bdaf4`.
+- Task 9 moderator editing tools were committed in `f9e6ab7`.
+- Task 10 e2e/smoke/final-docs changes are staged next for commit.
+
+## Recommended Next Step
+
+Commit and push Task 10, then choose the branch integration path: open a PR, merge the worktree branch, or keep it available for further polish.
+
+## Quick Resume Notes
+
+If resuming in a new dialogue, the next implementation step is:
+
+- Commit and push Task 10, then decide how to integrate `codex/family-tree-implementation`.
+
+If resuming in the same environment, first check Docker availability:
+
+```bash
+docker context show
+ls -la ~/.docker/run
+docker compose build api
+docker compose run --rm api pytest -q
+```

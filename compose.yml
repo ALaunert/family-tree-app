@@ -1,0 +1,144 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-family_tree}
+      POSTGRES_USER: ${POSTGRES_USER:-family_tree}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_tree}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  e2e-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: family_tree_e2e
+      POSTGRES_USER: family_tree
+      POSTGRES_PASSWORD: family_tree
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://family_tree:family_tree@db:5432/family_tree}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      OWNER_EMAIL: ${OWNER_EMAIL:-owner@example.com}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-change-me}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    working_dir: /app
+    volumes:
+      - ./api:/app
+
+  web:
+    build:
+      context: ./web
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./web/index.html:/app/index.html
+      - ./web/src:/app/src
+      - ./web/tsconfig.json:/app/tsconfig.json
+      - ./web/tsconfig.node.json:/app/tsconfig.node.json
+      - ./web/vite.config.ts:/app/vite.config.ts
+
+  e2e-api:
+    build:
+      context: ./api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      e2e-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://family_tree:family_tree@e2e-db:5432/family_tree_e2e
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      SESSION_COOKIE_SECURE: "false"
+      OWNER_EMAIL: ${OWNER_EMAIL:-owner@example.com}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-change-me}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=2)\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    working_dir: /app
+    volumes:
+      - ./api:/app
+
+  e2e-web:
+    build:
+      context: ./web
+    depends_on:
+      e2e-api:
+        condition: service_healthy
+    environment:
+      VITE_API_PROXY_TARGET: http://e2e-api:8000
+    working_dir: /app
+    volumes:
+      - ./web/index.html:/app/index.html
+      - ./web/src:/app/src
+      - ./web/tsconfig.json:/app/tsconfig.json
+      - ./web/tsconfig.node.json:/app/tsconfig.node.json
+      - ./web/vite.config.ts:/app/vite.config.ts
+
+  e2e-setup:
+    build:
+      context: ./api
+    command: >
+      sh -c "alembic upgrade head
+      && RESET_DEMO_DATA=true python scripts/seed_demo_data.py
+      && python scripts/seed_owner.py"
+    depends_on:
+      e2e-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://family_tree:family_tree@e2e-db:5432/family_tree_e2e
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      OWNER_EMAIL: ${OWNER_EMAIL:-owner@example.com}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-change-me}
+    working_dir: /app
+    volumes:
+      - ./api:/app
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.56.1-noble
+    depends_on:
+      e2e-setup:
+        condition: service_completed_successfully
+      e2e-web:
+        condition: service_started
+    environment:
+      PLAYWRIGHT_BASE_URL: http://e2e-web:5173
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - npm ci && until curl -fsS http://e2e-api:8000/api/v1/health >/dev/null; do sleep 1; done; until curl -fsS http://e2e-web:5173 >/dev/null; do sleep 1; done; exec "$$@"
+      - --
+    working_dir: /app
+    volumes:
+      - ./web:/app
+      - e2e-node-modules:/app/node_modules
+
+volumes:
+  postgres-data:
+  e2e-node-modules:
